@@ -36,13 +36,13 @@
 
 | PS Requirement | Status | Code Location | Notes |
 |---|---|---|---|
-| T-a: Volumetric DDoS detection (SYN flood, UDP flood, Slowloris) | `PLANNED (Ph2)` | `backend/trinetra/detectors/ddos.py` | IF + RF on rate/ratio features; all thresholds in config as initial heuristics |
-| T-b: Botnet C2 beaconing detection | `PLANNED (Ph2)` | `backend/trinetra/detectors/beaconing.py` | RF + IF on IAT features (CV, autocorr, FFT) |
-| T-c: DGA domain detection | `PLANNED (Ph2)` | `backend/trinetra/detectors/dga.py` | Char n-gram classifier + Shannon entropy |
-| T-c: DNS tunnelling detection | `PLANNED (Ph2)` | `backend/trinetra/detectors/dns_tunnel.py` | RF on query length, entropy, record type distribution |
-| T-d: Malware detection in encrypted TLS sessions | `PARTIAL (Ph0)` | [`features/tls_parser.py`](backend/trinetra/features/tls_parser.py) — JA3/JA3S parsing; [`features/tls_parser.py#extract_pst_sequence`](backend/trinetra/features/tls_parser.py) | Full detector (blacklist + RF on PST/cert features) in Ph2 |
-| T-e: Port scanning / reconnaissance detection | `PLANNED (Ph2)` | `backend/trinetra/detectors/port_scan.py` | IF on dst_port_count, dst_ip_count, SYN ratios |
-| T-f: Data exfiltration detection | `PLANNED (Ph2)` | `backend/trinetra/detectors/exfil.py` | RF on r_byte, cumulative_out_bytes, session features |
+| T-a: Volumetric DDoS detection (SYN flood, UDP flood, Slowloris) | `DONE` | `backend/trinetra/detectors/ddos.py` | IF + RF on rate/ratio features; all thresholds in config as initial heuristics |
+| T-b: Botnet C2 beaconing detection | `DONE` | `backend/trinetra/detectors/beacon.py` | RF + IF on IAT features (CV, autocorr, FFT) |
+| T-c: DGA domain detection | `DONE` | `backend/trinetra/detectors/dga.py` | Char n-gram classifier + Shannon entropy |
+| T-c: DNS tunnelling detection | `DONE` | `backend/trinetra/detectors/dga.py` | RF on query length, entropy, record type distribution |
+| T-d: Malware detection in encrypted TLS sessions | `DONE` | `backend/trinetra/detectors/tls_malware.py` | Full detector (blacklist + rule on PST sequence) |
+| T-e: Port scanning / reconnaissance detection | `DONE` | `backend/trinetra/detectors/port_scan.py` | IF on dst_port_count, dst_ip_count, SYN ratios |
+| T-f: Data exfiltration detection | `DONE` | `backend/trinetra/detectors/exfil.py` | RF on r_byte, cumulative_out_bytes, session features |
 
 ---
 
@@ -50,9 +50,9 @@
 
 | PS Requirement | Status | Code Location | Notes |
 |---|---|---|---|
-| AI/ML pipeline (not purely rule-based) | `PLANNED (Ph2)` | `backend/trinetra/detectors/` | Each detector requires a trained model; see master_plan.md §AI/ML |
-| Documented model features | `PLANNED (Ph2)` | `docs/model_features.md` | Per-detector feature tables |
-| Train/validation/held-out splits documented | `PLANNED (Ph2)` | `scripts/train/` | 60%/20%/20% splits; cross-dataset check |
+| AI/ML pipeline (not purely rule-based) | `DONE` | `backend/trinetra/detectors/` | Each detector requires a trained model; see master_plan.md §AI/ML |
+| Documented model features | `DONE` | `docs/model_cards/` | Per-detector feature tables |
+| Train/validation/held-out splits documented | `DONE` | `scripts/train/` | 60%/20%/20% splits; cross-dataset check |
 | Model artifacts reproducible | `PLANNED (Ph2)` | `scripts/train/*.py` | `make train-{detector}` target |
 | Interpretable evidence per alert | `DONE` | [`schemas.py#EvidenceItem`](backend/trinetra/schemas.py) | Each alert has ≥1 EvidenceItem; feature + value + threshold + interpretation |
 | Synthetic-data caveat documented | `DONE` | [`simulator.py`](backend/trinetra/simulator.py) — docstring; [`research_notes.md §6`](research_notes.md) | Synthetic vs. real-PCAP metrics always reported separately |

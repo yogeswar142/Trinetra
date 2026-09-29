@@ -6,7 +6,7 @@
 *Theme: Blockchain & Cybersecurity*
 
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg?logo=python&logoColor=white)](https://python.org)
-[![Tests Status](https://img.shields.io/badge/tests-147%20passed-success.svg?logo=pytest&logoColor=white)](tests/)
+[![Tests Status](https://img.shields.io/badge/tests-214%20passed-success.svg?logo=pytest&logoColor=white)](tests/)
 [![Passive Sensor](https://img.shields.io/badge/ingest-receive--only%20(air--gap)-red.svg?logo=shield&logoColor=white)](tests/test_no_transmit.py)
 [![Forensic Ledger](https://img.shields.io/badge/ledger-Ed25519%20%2B%20Merkle%20Tree-orange.svg?logo=blockchaindotcom&logoColor=white)](backend/trinetra/ledger.py)
 [![Compliance](https://img.shields.io/badge/compliance-PS%2026145%20Matrix-purple.svg)](ps_compliance_matrix.md)
@@ -146,9 +146,9 @@ cd Trinetra
 pip install -e ".[dev,benchmark]"
 ```
 
-### 3. Run Test Suite (Includes No-Transmit Static AST Analysis)
+### 3. Run Test Suite (214 Tests — Includes No-Transmit Static AST Analysis)
 ```bash
-# Verify all 120+ tests including safety and direction tests
+# Verify all 214 tests including safety, detector, and direction tests
 pytest tests/ -v
 # or via Makefile
 make test
@@ -156,9 +156,49 @@ make test
 
 ### 4. Run Reproducible Benchmark Harness
 ```bash
-python scripts/benchmark_pipeline.py
+python scripts/benchmark_v5.py
 # or via Makefile
 make benchmark
+```
+
+### 5. Generate PCAP Training Data & Retrain Models
+```bash
+make generate-pcaps   # Generate Scapy tool-realistic attack PCAPs
+make train            # Retrain all 6 ML models on PCAP-derived features
+```
+
+---
+
+## 🖥️ SOC Dashboard
+
+Trinetra ships a dual-mode SOC dashboard for real-time threat monitoring and forensic review:
+
+### Web Dashboard (Recommended)
+A premium dark-mode SOC interface accessible from any browser:
+```bash
+make dashboard
+# Open http://localhost:8765 in your browser
+```
+Features:
+- 🟠 **Live alert feed** — all 6 threat classes (T-a through T-f) with severity badges and timestamps
+- 📊 **Threat distribution donut chart** — real-time proportional breakdown by class
+- 🔗 **Forensic ledger panel** — block height, head hash, and one-click chain verification
+- 🔍 **Evidence viewer** — click any alert row to inspect the full ML evidence chain
+- ✅ **Verify Chain button** — triggers Ed25519 + Merkle root integrity verification in-browser
+- 📡 **REST API** at `/api/alerts`, `/api/ledger`, `/api/health` (Swagger docs at `/api/docs`)
+
+### CLI Dashboard
+Rich-text terminal dashboard for headless or SSH operator sessions:
+```bash
+make dashboard-cli
+```
+
+### Docker (Air-Gapped Deployment)
+Sensor on `enclave-net` (internal, zero external routing) + dashboard on `dashboard-net` (operator-reachable):
+```bash
+docker compose up
+# Dashboard: http://localhost:8765
+# Sensor: fully air-gapped inside enclave-net (internal: true)
 ```
 
 ---
