@@ -2,18 +2,29 @@
 tests/test_netflow_ingest.py
 
 Tests for NetFlowV9Parser:
-- RFC 3954 standard binary datagram decoding
-- Out-of-order template arrival: data flowset received BEFORE template, buffered,
-  and decoded when template arrives
-- Template refresh
-- Options template handling (FlowSet ID 1)
-- Unknown field handling (safely skipped by declared length, counted)
-- Cross-checking flow counts and byte totals against simulator flows
+- Builder-Generated Unit Tests:
+    - Standard RFC 3954 binary datagram decoding
+    - Out-of-order template arrival (orphaned buffering and drain)
+    - Options template handling (FlowSet ID 1)
+    - Unknown field handling (safely skipped by length, counted)
+    - Orphaned buffer cap enforcement (drop and count)
+    - Template refresh tracking
+    - Mid-stream template reassignment / schema alteration
+- Independent Fixture Validation:
+    - Independent binary NetFlow v9 export file validation (`data/fixtures/netflow_v9_export.bin`)
+    - Cross-checking against PCAP-derived flow table (`data/fixtures/netflow_comparison.pcap`)
+    - Rigorous explanation of unidirectional NetFlow records vs bidirectional PCAP flow records
 """
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
+import socket
+import struct
 import pytest
 
+from trinetra.config import ScenarioTopology
+from trinetra.ingest.flow_table import FlowTable
 from trinetra.ingest.netflow import (
     FIELD_IN_BYTES,
     FIELD_IPV4_DST_ADDR,
@@ -21,9 +32,11 @@ from trinetra.ingest.netflow import (
     FIELD_L4_DST_PORT,
     FIELD_L4_SRC_PORT,
     FIELD_PROTOCOL,
+    FIELD_TCP_FLAGS,
     NetFlowV9Parser,
     build_netflow_v9_packet,
 )
+from trinetra.ingest.pcap import PcapIngest
 from trinetra.schemas import FlowEvent
 
 
@@ -41,8 +54,11 @@ def _make_sample_flow(src_ip="192.168.1.10", dst_ip="10.0.0.1", bytes_len=1500) 
     )
 
 
-class TestNetFlowV9Ingest:
-    def test_parse_standard_netflow_v9_packet(self) -> None:
+class TestNetFlowV9Unit:
+    """Builder-generated packet unit tests."""
+
+    def test_unit_parse_standard_netflow_v9_packet(self) -> None:
+        """Unit test: parse standard builder-generated NetFlow v9 packet."""
         flow = _make_sample_flow()
         packet_bytes = build_netflow_v9_packet([flow], include_template=True)
 
@@ -60,11 +76,11 @@ class TestNetFlowV9Ingest:
         assert parser.stats.records_emitted == 1
         assert parser.stats.templates_registered == 1
 
-    def test_out_of_order_template_arrival(self) -> None:
+    def test_unit_out_of_order_template_arrival(self) -> None:
         """
-        CRITICAL TEST: Data packet arrives BEFORE its template packet.
+        Unit test: Data packet arrives BEFORE its template packet.
         Parser must buffer the orphaned data, register template on next packet,
-        and emit the resolved records!
+        and emit the resolved records.
         """
         flow = _make_sample_flow(bytes_len=2048)
 
@@ -87,12 +103,84 @@ class TestNetFlowV9Ingest:
         assert events_stage2[0].length == 2048
         assert parser.stats.orphaned_records_resolved == 1
 
-    def test_options_template_does_not_crash(self) -> None:
+    def test_unit_orphaned_buffer_cap_enforcement(self) -> None:
+        """
+        Unit test: orphaned data buffer has a strict maximum capacity.
+        When exceeded, excess orphaned flowsets are dropped and counted, preventing OOM.
+        """
+        parser = NetFlowV9Parser(max_orphaned_flowsets=3)
+        flow = _make_sample_flow(bytes_len=512)
+        orphan_pkt = build_netflow_v9_packet([flow], template_id=999, include_template=False)
+
+        # Send 5 orphaned packets
+        for _ in range(5):
+            list(parser.parse_datagram(orphan_pkt))
+
+        # Buffer must cap at 3, dropped must be 2
+        assert len(parser.orphaned_data) == 3
+        assert parser.stats.orphaned_records_buffered == 3
+        assert parser.stats.orphaned_records_dropped == 2
+
+    def test_unit_template_refresh(self) -> None:
+        """
+        Unit test: template refresh for existing (source_id, template_id).
+        Must update last_refresh timestamp and increment templates_refreshed counter.
+        """
+        flow = _make_sample_flow()
+        pkt = build_netflow_v9_packet([flow], source_id=1, template_id=256, include_template=True)
+
+        parser = NetFlowV9Parser()
+        list(parser.parse_datagram(pkt))
+        assert parser.stats.templates_registered == 1
+        assert parser.stats.templates_refreshed == 0
+        initial_refresh = parser.templates[(1, 256)].last_refresh
+
+        # Send packet again with same template
+        list(parser.parse_datagram(pkt))
+        assert parser.stats.templates_registered == 1
+        assert parser.stats.templates_refreshed == 1
+        assert parser.templates[(1, 256)].last_refresh >= initial_refresh
+
+    def test_unit_midstream_template_change(self) -> None:
+        """
+        Unit test: Exporter modifies template definition mid-stream for template_id=256.
+        Subsequent data flowsets must be decoded with the newly assigned schema.
+        """
+        parser = NetFlowV9Parser()
+
+        # Schema A: (IPV4_SRC_ADDR, IPV4_DST_ADDR, L4_SRC_PORT, L4_DST_PORT, PROTOCOL, IN_BYTES, TCP_FLAGS)
+        flow_a = _make_sample_flow(bytes_len=100)
+        pkt_a = build_netflow_v9_packet([flow_a], source_id=1, template_id=256, include_template=True)
+        events_a = list(parser.parse_datagram(pkt_a))
+        assert len(events_a) == 1
+        assert events_a[0].length == 100
+
+        # Schema B: Redefine template 256 with only (IPV4_SRC_ADDR, IPV4_DST_ADDR, IN_BYTES) = 12 bytes
+        new_fields = [
+            (FIELD_IPV4_SRC_ADDR, 4),
+            (FIELD_IPV4_DST_ADDR, 4),
+            (FIELD_IN_BYTES, 4),
+        ]
+        field_bytes = b"".join(struct.pack("!HH", ft, fl) for ft, fl in new_fields)
+        tmpl_body = struct.pack("!HH", 256, len(new_fields)) + field_bytes
+        tmpl_fs = struct.pack("!HH", 0, 4 + len(tmpl_body)) + tmpl_body
+
+        # Data conforming to Schema B: 10.0.0.1 -> 10.0.0.2, 9999 bytes
+        rec = struct.pack("!4s4sI", socket.inet_aton("10.0.0.1"), socket.inet_aton("10.0.0.2"), 9999)
+        data_fs = struct.pack("!HH", 256, 4 + len(rec)) + rec
+        hdr = struct.pack("!HHIIII", 9, 2, 2000, 1700000100, 2, 1)
+        pkt_b = hdr + tmpl_fs + data_fs
+
+        events_b = list(parser.parse_datagram(pkt_b))
+        assert len(events_b) == 1
+        assert events_b[0].src_ip == "10.0.0.1"
+        assert events_b[0].dst_ip == "10.0.0.2"
+        assert events_b[0].length == 9999
+        assert parser.stats.templates_refreshed == 1
+
+    def test_unit_options_template_does_not_crash(self) -> None:
         """Options template flowset (FlowSet ID 1) parsed safely."""
-        import struct
-        # NetFlow header (20 bytes) + Options Template FlowSet (ID=1, Len=12)
         hdr = struct.pack("!HHIIII", 9, 1, 1000, 1700000000, 1, 1)
-        # FlowSet ID=1, Length=12, Template ID=257, Scope Length=4, Option Length=4
         opts_flowset = struct.pack("!HHHHHH", 1, 12, 257, 4, 4, 1)
         datagram = hdr + opts_flowset
 
@@ -101,10 +189,8 @@ class TestNetFlowV9Ingest:
         assert len(events) == 0
         assert parser.stats.options_templates_registered == 1
 
-    def test_unknown_fields_safely_skipped(self) -> None:
+    def test_unit_unknown_fields_safely_skipped(self) -> None:
         """Unknown field IDs in template are skipped by declared length and counted."""
-        import socket, struct
-        # Construct template with an unknown field (ID=999, len=4)
         tmpl_fields = [
             (FIELD_IPV4_SRC_ADDR, 4),
             (FIELD_IPV4_DST_ADDR, 4),
@@ -115,7 +201,6 @@ class TestNetFlowV9Ingest:
         tmpl_content = struct.pack("!HH", 258, len(tmpl_fields)) + field_bytes
         tmpl_fs = struct.pack("!HH", 0, 4 + len(tmpl_content)) + tmpl_content
 
-        # Data record with dummy bytes for field 999
         rec = struct.pack(
             "!4s4s4sI",
             socket.inet_aton("10.0.0.5"),
@@ -134,23 +219,90 @@ class TestNetFlowV9Ingest:
         assert events[0].length == 5000
         assert parser.stats.unknown_fields_encountered >= 1
 
-    def test_cross_check_flow_counts_and_bytes(self) -> None:
-        """
-        Cross-check flow counts and total bytes exported via NetFlow v9
-        against decoded flow records.
-        """
-        sample_flows = [
-            _make_sample_flow("10.0.1.1", "10.0.2.1", 1000),
-            _make_sample_flow("10.0.1.2", "10.0.2.2", 2500),
-            _make_sample_flow("10.0.1.3", "10.0.2.3", 750),
-        ]
-        total_expected_bytes = sum(f.length for f in sample_flows)
 
-        pkt = build_netflow_v9_packet(sample_flows, source_id=42, template_id=260)
+class TestNetFlowIndependentFixtureValidation:
+    """
+    Validation against independent binary export files and cross-checking
+    against PCAP-derived flow tables.
+    """
+
+    def test_independent_netflow_v9_binary_fixture(self) -> None:
+        """
+        Validate binary NetFlow v9 datagram file from disk.
+        Check SHA256 checksum and ensure all flows are decoded with zero corruption.
+        """
+        bin_path = Path("data/fixtures/netflow_v9_export.bin")
+        assert bin_path.exists(), f"Missing fixture {bin_path}"
+
+        raw_bytes = bin_path.read_bytes()
+        expected_sha256 = "b12a18114d7bd57005cf34bdc9f3419dcbbac0e2a1d6553f7e85a201a1c9f980"
+        actual_sha256 = hashlib.sha256(raw_bytes).hexdigest()
+        assert actual_sha256 == expected_sha256, f"Checksum mismatch: {actual_sha256}"
 
         parser = NetFlowV9Parser()
-        decoded_events = list(parser.parse_datagram(pkt))
+        events = list(parser.parse_datagram(raw_bytes))
 
-        assert len(decoded_events) == 3
-        total_decoded_bytes = sum(e.length for e in decoded_events)
-        assert total_decoded_bytes == total_expected_bytes
+        # 4 records decoded
+        assert len(events) == 4
+        assert parser.stats.records_emitted == 4
+        assert parser.stats.corrupt_packets_dropped == 0
+        assert parser.stats.templates_registered == 1
+
+        # Check total bytes across all 4 flows
+        total_bytes = sum(ev.length for ev in events)
+        assert total_bytes == 8170
+
+    def test_cross_check_netflow_vs_pcap_flow_table(self) -> None:
+        """
+        Cross-check binary NetFlow v9 records against PCAP-derived flow table.
+
+        EXPLANATION OF DIFFERENCES:
+        1. NetFlow v9 records are UNIDIRECTIONAL (RFC 3954 Section 1).
+           A two-way TCP dialogue or UDP query-response produces TWO independent
+           NetFlow export records: one for A -> B and one for B -> A.
+        2. Trinetra's PCAP FlowTable tracks BIDIRECTIONAL flows keyed by
+           BidirectionalFlowKey(ip_low, port_low, ip_high, port_high, proto).
+           Both directions are merged into a single stateful FlowRecord with
+           fwd_bytes and rev_bytes.
+        3. Therefore:
+           - NetFlow v9 record count = 4 (2 forward records + 2 reverse records).
+           - PCAP flow table count = 2 bidirectional flows.
+           - Total bytes in NetFlow (8,170 bytes) EXACTLY MATCHES total bytes
+             in PCAP flow table (8,170 bytes).
+        """
+        # 1. Parse NetFlow v9 binary export
+        bin_path = Path("data/fixtures/netflow_v9_export.bin")
+        parser = NetFlowV9Parser()
+        netflow_events = list(parser.parse_datagram(bin_path.read_bytes()))
+        assert len(netflow_events) == 4
+        netflow_total_bytes = sum(e.length for e in netflow_events)
+
+        # 2. Parse matching PCAP through PcapIngest and FlowTable
+        pcap_path = Path("data/fixtures/netflow_comparison.pcap")
+        assert pcap_path.exists(), f"Missing fixture {pcap_path}"
+
+        pcap_ingest = PcapIngest()
+        flow_table = FlowTable(
+            topology_override=["192.168.1.0/24"],
+        )
+
+        pcap_events = list(pcap_ingest.parse_file(str(pcap_path)))
+        assert len(pcap_events) == 4  # 4 raw packets
+
+        for ev in pcap_events:
+            flow_table.process_event(ev)
+
+        # 3. Assertions and cross-check
+        active_flows = list(flow_table.flows.values())
+
+        # NetFlow count = 4 unidirectional flows vs PCAP table = 2 bidirectional flows
+        assert len(netflow_events) == 4
+        assert len(active_flows) == 2
+
+        # Sum of bytes across bidirectional flows
+        pcap_total_bytes = sum(f.total_bytes for f in active_flows)
+
+        # Total byte totals must match identically!
+        assert netflow_total_bytes == 8170
+        assert pcap_total_bytes == 8170
+        assert netflow_total_bytes == pcap_total_bytes

@@ -73,6 +73,7 @@ class NetFlowIngestStats:
     flowsets_parsed: int = 0
     records_emitted: int = 0
     templates_registered: int = 0
+    templates_refreshed: int = 0
     options_templates_registered: int = 0
     orphaned_records_buffered: int = 0
     orphaned_records_resolved: int = 0
@@ -181,9 +182,9 @@ class NetFlowV9Parser:
                     )
                 else:
                     # Template not yet seen: Buffer in orphaned data queue
-                    self.stats.orphaned_records_buffered += 1
                     if len(self.orphaned_data) < self.max_orphaned:
                         self.orphaned_data.append((source_id, flowset_id, flowset_data, unix_secs, sys_uptime))
+                        self.stats.orphaned_records_buffered += 1
                     else:
                         self.stats.orphaned_records_dropped += 1
 
@@ -213,13 +214,17 @@ class NetFlowV9Parser:
                 offset += 4
 
             template_key = (source_id, template_id)
+            if template_key in self.templates:
+                self.stats.templates_refreshed += 1
+            else:
+                self.stats.templates_registered += 1
+
             self.templates[template_key] = TemplateRecord(
                 template_id=template_id,
                 fields=fields,
                 record_length=rec_len,
                 last_refresh=time.time(),
             )
-            self.stats.templates_registered += 1
             registered_ids.append(template_id)
 
         return registered_ids

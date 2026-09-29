@@ -20,7 +20,7 @@ env/
 # Sensitive / Enclave Local Keys and Ledger Runtime Artifacts
 data/ledger/*.jsonl
 data/signatures/*.key
-data/fixtures/*.pcap
+data/fixtures/*benchmark*.pcap
 !data/signatures/.gitkeep
 !data/ledger/.gitkeep
 !data/fixtures/.gitkeep
