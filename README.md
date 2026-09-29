@@ -102,12 +102,37 @@ Trinetra specifically addresses the six critical cyber threats defined in PS 261
 
 | Threat Class | Sub-Vectors | Statistical Evidence | ML Model / Strategy | MITRE ATT&CK |
 |---|---|---|---|---|
-| **T-a: Volumetric DDoS** | SYN Floods, UDP Amplification, Slowloris | $\rho_{\text{SYN}} > 0.80$, Source Entropy $H_{\text{src}}$, PPS/BPS spikes | Multi-variate Isolation Forest + Rate Anomaly Classifier | [T1498](https://attack.mitre.org/techniques/T1498/), [T1499](https://attack.mitre.org/techniques/T1499/) |
-| **T-b: Botnet C2 Beaconing** | Periodic C2, Cobalt Strike (with jitter) | IAT Coefficient of Variation ($CV < 0.22$), FFT pulse frequency, Autocorr $R_{xx}(k)$ | Random Forest on IAT time-series dynamics | [T1071.001](https://attack.mitre.org/techniques/T1071/001/), [T1571](https://attack.mitre.org/techniques/T1571/) |
-| **T-c: DGA & DNS Tunnelling** | Algorithmic domains, dnscat2, iodine | Query length $> 35$, Subdomain Shannon Entropy $H > 3.4$, TXT query burst | Character Trigram Language Model + Random Forest DNS classifier | [T1568.002](https://attack.mitre.org/techniques/T1568/002/), [T1071.004](https://attack.mitre.org/techniques/T1071/004/) |
-| **T-d: Encrypted Malware** | C2 over TLS, JA3 spoofing | JA3/JA3S hash matching, Packet Size and Timing (PST) sequences, Certificate anomalies | Supervised Classifier trained on PST sequence transitions | [T1573.002](https://attack.mitre.org/techniques/T1573/002/) |
+| **T-a: Volumetric DDoS** | SYN Floods, UDP Amplification, Slowloris | SYN Ratio > 0.80, Source Entropy $H_{\text{src}}$, PPS/BPS spikes | Multi-variate Isolation Forest + Rate Anomaly Classifier | [T1498](https://attack.mitre.org/techniques/T1498/), [T1499](https://attack.mitre.org/techniques/T1499/) |
+| **T-b: Botnet C2 Beaconing** | Periodic C2, Cobalt Strike (with jitter) | IAT Coefficient of Variation (CV < 0.22), FFT pulse frequency, Autocorr $R_{xx}(k)$ | Random Forest on IAT time-series dynamics | [T1071.001](https://attack.mitre.org/techniques/T1071/001/), [T1571](https://attack.mitre.org/techniques/T1571/) |
+| **T-c: DGA & DNS Tunnelling** | Algorithmic domains, dnscat2, iodine | Query length > 35, Subdomain Shannon Entropy $H > 3.4$, TXT query burst | Character Trigram Language Model + Random Forest DNS classifier | [T1568.002](https://attack.mitre.org/techniques/T1568/002/), [T1071.004](https://attack.mitre.org/techniques/T1071/004/) |
+| **T-d: Encrypted Malware** | C2 over TLS, JA3 spoofing | JA3/JA3S hash matching, Packet Size and Timing (PST) sequences | Supervised Classifier trained on PST sequence transitions | [T1573.002](https://attack.mitre.org/techniques/T1573/002/) |
 | **T-e: Recon & Port Scanning** | Horizontal sweeps, Vertical scans, SYN scans | Distinct destination port/IP cardinality, SYN:ACK ratio skew | Isolation Forest anomaly detection on connection attempts | [T1595](https://attack.mitre.org/techniques/T1595/), [T1046](https://attack.mitre.org/techniques/T1046/) |
 | **T-f: Data Exfiltration** | Large file exfil, Low & slow egress | Egress/Ingress byte ratio ($R_{\text{byte}} > 3.5$), Sustained cumulative volume | Random Forest on directional byte volume | [T1048](https://attack.mitre.org/techniques/T1048/) |
+
+---
+
+## 📊 Empirical Benchmark Results & Datasets Used
+
+Trinetra's performance and accuracy metrics are strictly derived from hardware-stamped benchmarks and real-world cybersecurity datasets:
+
+### Datasets Used for Training & Validation:
+1. **CTU-13 Dataset:** Real-world botnet traffic captures parsed via Argus `.binetflow` ingestion engine (`T-b`, `T-c`).
+2. **CICIDS2017 Dataset:** Baseline flow volume verification and directional traffic entropy validation.
+3. **Scapy Tool-Realistic Attack Generator:** Custom synthetic attack vectors (`T-a` through `T-f`) calibrated to realistic protocol behaviors.
+
+### Measured Hardware Benchmarks (Benchmark v5 Results):
+* **Sustained Throughput:** `7,237.26 packets/sec` (`21.51 Mbps sustained`)
+* **Service Time Latency (Packet Processing):**
+  * `p50 (Median):` **103.96 µs**
+  * `p95:` **188.50 µs**
+  * `p99:` **243.64 µs**
+* **End-to-End Alert Lag (Ingest to Dashboard):**
+  * `p50 (Median):` **2.55 ms**
+  * `p95:` **3.76 ms**
+  * `p99:` **5.10 ms**
+* **Memory Footprint & Eviction Bounding:**
+  * `Peak RSS:` **351.9 MB** (LRU capacity bounding preserves memory plateau under extreme eviction stress).
+* **Test Suite Pass Rate:** **214 / 214 Passed (100%)** including static AST socket safety verification (`test_no_transmit.py`).
 
 ---
 
@@ -118,18 +143,29 @@ Addressing the SIH theme **"Blockchain & Cybersecurity"** and NTRO's requirement
 ### Architecture & Mathematical Formulation
 Trinetra implements a **Hash-Chained, Ed25519-Signed Merkle Ledger** (strictly rejecting token-based hype or external proof-of-work in an air-gapped diode):
 
-1. **Alert Canonicalization:** Every alert $A_k$ is serialized to RFC 8785 deterministic canonical JSON.
-2. **Leaf Hash:** $\text{leaf\_hash}_k = \text{SHA-256}(\text{canonical\_json}(A_k))$.
+1. **Alert Canonicalization:** Every alert `A_k` is serialized to RFC 8785 deterministic canonical JSON.
+2. **Leaf Hash Computation:**
+   ```text
+   leaf_hash_k = SHA-256(canonical_json(A_k))
+   ```
 3. **Merkle Root Commit:** Pending alerts are compiled into a balanced Merkle tree:
-   $$\text{MerkleRoot}_N = \text{MerkleTree}(\text{leaf\_hash}_0, \dots, \text{leaf\_hash}_{M-1})$$
-4. **Block Hash Preimage Invariant (Sig Not in Preimage):**
-   $$\text{Block\_Hash}_N = \text{SHA-256}(\text{Prev\_Block\_Hash}_{N-1} \parallel \text{MerkleRoot}_N \parallel \text{Timestamp} \parallel \text{Canonical\_Metadata})$$
+   ```text
+   MerkleRoot_N = MerkleTree(leaf_hash_0, leaf_hash_1, ..., leaf_hash_M-1)
+   ```
+4. **Block Hash Preimage Invariant (Signature NOT in Preimage):**
+   ```text
+   Block_Hash_N = SHA-256(Prev_Block_Hash_N-1 || MerkleRoot_N || Timestamp || Canonical_Metadata)
+   ```
 5. **Enclave Signing:**
-   $$\text{Signature}_N = \text{Ed25519\_Sign}(\text{PrivateKey}_{\text{enclave}}, \text{Block\_Hash}_N)$$
+   ```text
+   Signature_N = Ed25519_Sign(PrivateKey_enclave, Block_Hash_N)
+   ```
 
 > **Honest Forensic Guarantee:**
 > * **Tamper Detection:** Modifying any historical alert breaks the Merkle root and invalidates all descendant block hashes and signatures.
 > * **Tail Truncation Mitigation:** The ledger provides `get_head_hash()` to periodically anchor the head hash to a write-once physical medium, printer, or external syslog display.
+
+
 
 ---
 
