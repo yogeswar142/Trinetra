@@ -18,13 +18,13 @@ This model detects DNS Tunnelling passively from statistical packet/flow aggrega
 
 > **⚠ SIMULATOR-ONLY EVALUATION**: Metrics above were measured on synthetic simulator data. F1=1.0 is EXPECTED and is NOT a performance claim. Separate evaluation on CTU-13 Argus binetflow or independent captures is required before any production deployment claim.
 
-- **Accuracy:** 1.0000
-- **Precision:** 1.0000 (95% CI: [1.0000, 1.0000])
+- **Accuracy:** 0.9275
+- **Precision:** 0.9219 (95% CI: [0.7368, 1.0000])
 - **Recall:** 1.0000 (95% CI: [1.0000, 1.0000])
-- **F1 Score:** 1.0000 (95% CI: [1.0000, 1.0000])
-- **ROC-AUC:** 1.0000
-- **Brier Score (Calibrated):** 0.0000
-- **Expected Calibration Error (ECE):** 0.0000
+- **F1 Score:** 0.9593 (95% CI: [0.8485, 1.0000])
+- **ROC-AUC:** 0.8023
+- **Brier Score (Calibrated):** 0.0663
+- **Expected Calibration Error (ECE):** 0.0293
 
 ## 4. Anti-Leakage & Safety Verification
 - **Group Splitting:** Partitioned strictly across independent /24 subnets.

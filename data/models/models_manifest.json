@@ -1,8 +1,8 @@
 {
   "version": "2.0.0-phase2c",
   "runtime_environment": {
-    "python_version": "3.11.9",
-    "numpy_version": "2.4.6",
+    "python_version": "3.12.3",
+    "numpy_version": "1.26.4",
     "sklearn_version": "1.9.1",
     "lightgbm_version": null
   },
@@ -10,45 +10,45 @@
     {
       "filename": "t_a_ddos.joblib",
       "threat_class": "T_A_DDOS",
-      "sha256": "45f8220b05ed55857ebe3b26917ca56dc903195290a3dd5b9f17b57c316b0e4a",
+      "sha256": "eef474c12334eeed7e89b95c0f8b357c9091324e92aae3f2898d20d452899f22",
       "model_type": "RandomForestClassifier",
       "calibrated": true
     },
     {
       "filename": "t_e_portscan.joblib",
       "threat_class": "T_E_PORT_SCAN",
-      "sha256": "a41bb33cf261573ec0ad104bf98bb440a25b8bcf1a3436fd25498664684261c3",
+      "sha256": "5f6c431364efc319b6bd45b681cd37efde50ed804516d07656ca81a412eb23ee",
       "model_type": "RandomForestClassifier",
       "calibrated": true
     },
     {
       "filename": "t_f_exfil.joblib",
       "threat_class": "T_F_EXFIL",
-      "sha256": "00c2aaff82324a8f15ade7d270e6c3ff1e5ab1a9d2b3018670a02446b8bb49b6",
+      "sha256": "be30a8e2e915e33c5129644575c43dd0e730541ea239c12a83e03d65825e6efd",
       "model_type": "RandomForestClassifier",
       "calibrated": true
     },
     {
       "filename": "t_b_beacon.joblib",
       "threat_class": "T_B_BEACON",
-      "sha256": "83bfd4ce5f87cac3cea7a3fd9783e26df6bf87d80c5b97c6b259ff1c47f4734d",
+      "sha256": "53151c43c901e573121288c78809ea57ed261ba091ba1996504605a11758c8f1",
       "model_type": "RandomForestClassifier",
       "calibrated": true
     },
     {
       "filename": "t_c_dga.joblib",
       "threat_class": "T_C_DGA",
-      "sha256": "d9324c76731eec69d6d484b735303d32b6d3096bbe0d988bc81f5b7530522ff7",
+      "sha256": "e4041f18942484a4d0c3cf6ac115e8f61b732e9bba4ab1050584bdb55ff95a0d",
       "model_type": "RandomForestClassifier",
       "calibrated": true
     },
     {
       "filename": "t_c_dns_tunnel.joblib",
       "threat_class": "T_C_DNS_TUNNEL",
-      "sha256": "46367853653a74b76ead284e3de032d3bfc4d1b9ac995d771c9d5ab6ef3ae792",
+      "sha256": "78e72c852f453b0f1cfd97486edeec884626be0ce63231df963e6f9df1b1e325",
       "model_type": "RandomForestClassifier",
       "calibrated": true
     }
   ],
-  "signature_hex": "cac2ff5c55d652e0752c64ddbc8f8b00450ada5699f894e7672e2cccebce75df9838a79b0b75a1f7236d55956e72534568301bff37ef510e27bb6ef2e7b4ca0d"
+  "signature_hex": "f8aac10f58f29a74e2add9955dbf59e392b0a43b8beef0f7ee2431206afb15449258dc83104afcf0e2ec7b0de38dbfaf51af1343303f1a8576192850e68a8709"
 }

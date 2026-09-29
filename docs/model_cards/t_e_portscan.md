@@ -15,13 +15,13 @@ This model detects Port Scanning & Reconnaissance passively from statistical pac
 - `packet_count`
 
 ## 3. Performance Metrics (Held-Out Test Split, Cluster Bootstrap 95% CI)
-- **Accuracy:** 1.0000
-- **Precision:** 1.0000 (95% CI: [1.0000, 1.0000])
-- **Recall:** 1.0000 (95% CI: [1.0000, 1.0000])
-- **F1 Score:** 1.0000 (95% CI: [1.0000, 1.0000])
-- **ROC-AUC:** 1.0000
-- **Brier Score (Calibrated):** 0.0001
-- **Expected Calibration Error (ECE):** 0.0019
+- **Accuracy:** 0.9845
+- **Precision:** 0.9875 (95% CI: [0.9364, 1.0000])
+- **Recall:** 0.9875 (95% CI: [0.9571, 1.0000])
+- **F1 Score:** 0.9875 (95% CI: [0.9587, 1.0000])
+- **ROC-AUC:** 0.9982
+- **Brier Score (Calibrated):** 0.0150
+- **Expected Calibration Error (ECE):** 0.0216
 
 ## 4. Anti-Leakage & Safety Verification
 - **Group Splitting:** Partitioned strictly across independent /24 subnets.

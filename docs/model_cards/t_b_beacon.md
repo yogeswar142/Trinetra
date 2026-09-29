@@ -25,7 +25,7 @@ This model detects Botnet C2 Beaconing passively from statistical packet/flow ag
 - **F1 Score:** 1.0000 (95% CI: [1.0000, 1.0000])
 - **ROC-AUC:** 1.0000
 - **Brier Score (Calibrated):** 0.0000
-- **Expected Calibration Error (ECE):** 0.0000
+- **Expected Calibration Error (ECE):** 0.0004
 
 ## 4. Anti-Leakage & Safety Verification
 - **Group Splitting:** Partitioned strictly across independent /24 subnets.

@@ -15,13 +15,13 @@ This model detects Volumetric DDoS passively from statistical packet/flow aggreg
 - `udp_amplification_factor`
 
 ## 3. Performance Metrics (Held-Out Test Split, Cluster Bootstrap 95% CI)
-- **Accuracy:** 1.0000
+- **Accuracy:** 0.9915
 - **Precision:** 1.0000 (95% CI: [1.0000, 1.0000])
-- **Recall:** 1.0000 (95% CI: [1.0000, 1.0000])
-- **F1 Score:** 1.0000 (95% CI: [1.0000, 1.0000])
-- **ROC-AUC:** 1.0000
-- **Brier Score (Calibrated):** 0.0000
-- **Expected Calibration Error (ECE):** 0.0005
+- **Recall:** 0.9875 (95% CI: [0.9609, 1.0000])
+- **F1 Score:** 0.9937 (95% CI: [0.9801, 1.0000])
+- **ROC-AUC:** 0.9938
+- **Brier Score (Calibrated):** 0.0087
+- **Expected Calibration Error (ECE):** 0.0118
 
 ## 4. Anti-Leakage & Safety Verification
 - **Group Splitting:** Partitioned strictly across independent /24 subnets.

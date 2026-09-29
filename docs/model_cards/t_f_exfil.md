@@ -21,8 +21,8 @@ This model detects Data Exfiltration passively from statistical packet/flow aggr
 - **Recall:** 1.0000 (95% CI: [1.0000, 1.0000])
 - **F1 Score:** 1.0000 (95% CI: [1.0000, 1.0000])
 - **ROC-AUC:** 1.0000
-- **Brier Score (Calibrated):** 0.0000
-- **Expected Calibration Error (ECE):** 0.0000
+- **Brier Score (Calibrated):** 0.0112
+- **Expected Calibration Error (ECE):** 0.0232
 
 ## 4. Anti-Leakage & Safety Verification
 - **Group Splitting:** Partitioned strictly across independent /24 subnets.
