@@ -59,133 +59,20 @@ MODEL_CARDS_DIR.mkdir(parents=True, exist_ok=True)
 # ---------------------------------------------------------------------------
 def generate_ddos_dataset() -> tuple[np.ndarray, np.ndarray, list[str]]:
     """Generates T-a dataset: [incoming_pps, syn_to_ack_ratio, src_ip_entropy, udp_amplification_factor]."""
-    rng = np.random.RandomState(42)
-    n_samples = 600
-
-    X = np.zeros((n_samples, 4), dtype=np.float64)
-    y = np.zeros(n_samples, dtype=np.int64)
-    subnets: list[str] = []
-
-    subnet_pool = [f"192.168.{i}.0/24" for i in range(1, 11)]
-
-    for i in range(n_samples):
-        s_net = subnet_pool[i % len(subnet_pool)]
-        subnets.append(s_net)
-        is_attack = i % 2 == 1
-        y[i] = 1 if is_attack else 0
-
-        if is_attack:
-            # DDoS: High PPS, High SYN ratio or high UDP amplification, high entropy
-            attack_type = rng.choice(["syn_flood", "udp_amp", "slowloris"])
-            if attack_type == "syn_flood":
-                X[i, 0] = rng.uniform(300.0, 1500.0)  # incoming_pps
-                X[i, 1] = rng.uniform(8.0, 50.0)      # syn_to_ack_ratio
-                X[i, 2] = rng.uniform(3.8, 5.5)       # src_ip_entropy
-                X[i, 3] = rng.uniform(0.1, 1.0)       # udp_amp
-            elif attack_type == "udp_amp":
-                X[i, 0] = rng.uniform(100.0, 800.0)
-                X[i, 1] = rng.uniform(0.1, 1.0)
-                X[i, 2] = rng.uniform(2.5, 4.5)
-                X[i, 3] = rng.uniform(10.0, 60.0)
-            else:  # Slowloris
-                X[i, 0] = rng.uniform(20.0, 80.0)
-                X[i, 1] = rng.uniform(3.0, 10.0)
-                X[i, 2] = rng.uniform(1.0, 2.5)
-                X[i, 3] = rng.uniform(0.1, 1.0)
-        else:
-            # Benign: Low to normal PPS, 1:1 SYN/ACK, low entropy, low UDP amp
-            X[i, 0] = rng.uniform(1.0, 80.0)
-            X[i, 1] = rng.uniform(0.8, 1.5)
-            X[i, 2] = rng.uniform(0.5, 2.8)
-            X[i, 3] = rng.uniform(0.2, 1.8)
-
-    return X, y, subnets
+    data = np.load(REPO_ROOT / "data" / "features" / "t_a_ddos.npz")
+    return data['X'], data['y'], data['subnets'].tolist()
 
 
 def generate_portscan_dataset() -> tuple[np.ndarray, np.ndarray, list[str]]:
     """Generates T-e dataset: [dst_port_count, dst_ip_count, syn_scan_ratio, packet_count]."""
-    rng = np.random.RandomState(43)
-    n_samples = 600
-
-    X = np.zeros((n_samples, 4), dtype=np.float64)
-    y = np.zeros(n_samples, dtype=np.int64)
-    subnets: list[str] = []
-
-    subnet_pool = [f"10.0.{i}.0/24" for i in range(1, 11)]
-
-    for i in range(n_samples):
-        s_net = subnet_pool[i % len(subnet_pool)]
-        subnets.append(s_net)
-        is_attack = i % 2 == 1
-        y[i] = 1 if is_attack else 0
-
-        if is_attack:
-            scan_type = rng.choice(["vertical", "horizontal", "strobe"])
-            if scan_type == "vertical":
-                X[i, 0] = rng.randint(25, 200)       # dst_port_count
-                X[i, 1] = rng.randint(1, 3)          # dst_ip_count
-                X[i, 2] = rng.uniform(0.75, 1.0)     # syn_scan_ratio
-                X[i, 3] = rng.randint(30, 250)       # packet_count
-            elif scan_type == "horizontal":
-                X[i, 0] = rng.randint(1, 4)
-                X[i, 1] = rng.randint(15, 80)
-                X[i, 2] = rng.uniform(0.70, 1.0)
-                X[i, 3] = rng.randint(20, 100)
-            else:  # Strobe / sneaky
-                X[i, 0] = rng.randint(10, 30)
-                X[i, 1] = rng.randint(2, 8)
-                X[i, 2] = rng.uniform(0.60, 0.90)
-                X[i, 3] = rng.randint(15, 45)
-        else:
-            # Benign: single host contacting 1-3 ports (e.g. 80, 443, 53)
-            X[i, 0] = rng.randint(1, 4)
-            X[i, 1] = rng.randint(1, 2)
-            X[i, 2] = rng.uniform(0.05, 0.30)
-            X[i, 3] = rng.randint(5, 50)
-
-    return X, y, subnets
+    data = np.load(REPO_ROOT / "data" / "features" / "t_e_portscan.npz")
+    return data['X'], data['y'], data['subnets'].tolist()
 
 
 def generate_exfil_dataset() -> tuple[np.ndarray, np.ndarray, list[str]]:
     """Generates T-f dataset: [r_byte_ratio, egress_bytes, ingress_bytes, duration_seconds, egress_rate_bps]."""
-    rng = np.random.RandomState(44)
-    n_samples = 600
-
-    X = np.zeros((n_samples, 5), dtype=np.float64)
-    y = np.zeros(n_samples, dtype=np.int64)
-    subnets: list[str] = []
-
-    subnet_pool = [f"172.16.{i}.0/24" for i in range(1, 11)]
-
-    for i in range(n_samples):
-        s_net = subnet_pool[i % len(subnet_pool)]
-        subnets.append(s_net)
-        is_attack = i % 2 == 1
-        y[i] = 1 if is_attack else 0
-
-        if is_attack:
-            exfil_type = rng.choice(["bulk", "trickle"])
-            if exfil_type == "bulk":
-                X[i, 0] = rng.uniform(4.0, 30.0)      # r_byte_ratio
-                X[i, 1] = rng.uniform(200_000, 5_000_000)  # egress_bytes
-                X[i, 2] = rng.uniform(5_000, 50_000)       # ingress_bytes
-                X[i, 3] = rng.uniform(10.0, 120.0)         # duration
-                X[i, 4] = (X[i, 1] * 8) / X[i, 3]          # bps
-            else:  # Trickle
-                X[i, 0] = rng.uniform(2.5, 8.0)
-                X[i, 1] = rng.uniform(50_000, 300_000)
-                X[i, 2] = rng.uniform(5_000, 30_000)
-                X[i, 3] = rng.uniform(180.0, 900.0)
-                X[i, 4] = (X[i, 1] * 8) / X[i, 3]
-        else:
-            # Benign: download dominant (r_byte < 0.5) or symmetric
-            X[i, 0] = rng.uniform(0.01, 0.40)
-            X[i, 1] = rng.uniform(2_000, 50_000)
-            X[i, 2] = rng.uniform(50_000, 2_000_000)
-            X[i, 3] = rng.uniform(5.0, 60.0)
-            X[i, 4] = (X[i, 1] * 8) / X[i, 3]
-
-    return X, y, subnets
+    data = np.load(REPO_ROOT / "data" / "features" / "t_f_exfil.npz")
+    return data['X'], data['y'], data['subnets'].tolist()
 
 
 # ---------------------------------------------------------------------------
@@ -200,71 +87,8 @@ def generate_beacon_dataset() -> tuple[np.ndarray, np.ndarray, list[str]]:
     Simulator-generated beacon patterns; ground truth is determined by generation
     parameters, not observed network captures.
     """
-    rng = np.random.RandomState(45)
-    n_samples = 600
-
-    X = np.zeros((n_samples, 5), dtype=np.float64)
-    y = np.zeros(n_samples, dtype=np.int64)
-    subnets: list[str] = []
-
-    subnet_pool = [f"10.10.{i}.0/24" for i in range(1, 11)]
-
-    for i in range(n_samples):
-        s_net = subnet_pool[i % len(subnet_pool)]
-        subnets.append(s_net)
-        is_attack = i % 2 == 1
-        y[i] = 1 if is_attack else 0
-
-        if is_attack:
-            beacon_type = rng.choice(["rigid", "jittered", "slow_jitter"])
-            if beacon_type == "rigid":
-                # Rigid C2 heartbeat: very low CV, high autocorr
-                iat_mean = rng.uniform(10.0, 300.0)   # 10s – 5min period
-                iat_cv   = rng.uniform(0.01, 0.18)    # Very low jitter
-                autocorr = rng.uniform(0.85, 1.0)
-                iat_std  = iat_mean * iat_cv
-            elif beacon_type == "jittered":
-                # Cobalt Strike-style jitter: moderate CV, strong autocorr
-                iat_mean = rng.uniform(30.0, 600.0)
-                iat_cv   = rng.uniform(0.18, 0.42)
-                autocorr = rng.uniform(0.70, 0.90)
-                iat_std  = iat_mean * iat_cv
-            else:  # Slow jitter / long period
-                iat_mean = rng.uniform(300.0, 3600.0)
-                iat_cv   = rng.uniform(0.05, 0.38)
-                autocorr = rng.uniform(0.60, 0.88)
-                iat_std  = iat_mean * iat_cv
-
-            sample_count = float(rng.randint(25, 64))  # At least 25 (> min_samples=21)
-
-        else:
-            # Benign: high CV (bursty), low autocorr, or very high IAT (idle)
-            benign_type = rng.choice(["bursty", "idle", "normal_web"])
-            if benign_type == "bursty":
-                iat_mean = rng.uniform(0.5, 5.0)
-                iat_cv   = rng.uniform(0.80, 3.0)
-                autocorr = rng.uniform(0.0, 0.35)
-                iat_std  = iat_mean * iat_cv
-            elif benign_type == "idle":
-                iat_mean = rng.uniform(3600.0, 86400.0)  # Hours between reconnections
-                iat_cv   = rng.uniform(0.5, 2.0)
-                autocorr = rng.uniform(0.0, 0.4)
-                iat_std  = iat_mean * iat_cv
-            else:  # Normal web traffic (moderate CV, low autocorr)
-                iat_mean = rng.uniform(1.0, 60.0)
-                iat_cv   = rng.uniform(0.50, 1.50)
-                autocorr = rng.uniform(0.0, 0.50)
-                iat_std  = iat_mean * iat_cv
-
-            sample_count = float(rng.randint(21, 50))
-
-        X[i, 0] = iat_mean
-        X[i, 1] = iat_cv
-        X[i, 2] = autocorr
-        X[i, 3] = iat_std
-        X[i, 4] = sample_count
-
-    return X, y, subnets
+    data = np.load(REPO_ROOT / "data" / "features" / "t_b_beacon.npz")
+    return data['X'], data['y'], data['subnets'].tolist()
 
 
 def _generate_dga_domain(rng: np.random.RandomState, length: int) -> str:
@@ -299,49 +123,8 @@ def generate_dga_dataset() -> tuple[np.ndarray, np.ndarray, list[str]]:
 
     SIMULATOR-ONLY DATA — labeled as inflated.
     """
-    rng = np.random.RandomState(46)
-    n_samples = 600
-
-    X = np.zeros((n_samples, 5), dtype=np.float64)
-    y = np.zeros(n_samples, dtype=np.int64)
-    subnets: list[str] = []
-
-    subnet_pool = [f"10.20.{i}.0/24" for i in range(1, 11)]
-
-    for i in range(n_samples):
-        s_net = subnet_pool[i % len(subnet_pool)]
-        subnets.append(s_net)
-        is_attack = i % 2 == 1
-        y[i] = 1 if is_attack else 0
-
-        if is_attack:
-            dga_type = rng.choice(["pure_random", "hex_random", "digit_heavy"])
-            if dga_type == "pure_random":
-                length = int(rng.randint(12, 25))
-                domain = _generate_dga_domain(rng, length)
-            elif dga_type == "hex_random":
-                # Hex-alphabet DGA (common in banking trojans)
-                charset = "abcdef0123456789"
-                length = int(rng.randint(10, 20))
-                label = "".join(rng.choice(list(charset)) for _ in range(length))
-                domain = f"{label}.malware.net"
-            else:  # Digit heavy
-                length = int(rng.randint(8, 18))
-                # Mix 40-60% digits
-                alpha = "abcdefghijklmnopqrstuvwxyz"
-                digits = "0123456789"
-                label = "".join(
-                    rng.choice(list(digits)) if rng.random() < 0.50 else rng.choice(list(alpha))
-                    for _ in range(length)
-                )
-                domain = f"{label}.c2.ru"
-        else:
-            domain = _generate_legit_domain(rng)
-
-        feats = extract_dga_features(domain)
-        X[i] = feats
-
-    return X, y, subnets
+    data = np.load(REPO_ROOT / "data" / "features" / "t_c_dga.npz")
+    return data['X'], data['y'], data['subnets'].tolist()
 
 
 def generate_dns_tunnel_dataset() -> tuple[np.ndarray, np.ndarray, list[str]]:
@@ -353,53 +136,8 @@ def generate_dns_tunnel_dataset() -> tuple[np.ndarray, np.ndarray, list[str]]:
 
     SIMULATOR-ONLY DATA — labeled as inflated.
     """
-    rng = np.random.RandomState(47)
-    n_samples = 600
-
-    X = np.zeros((n_samples, 4), dtype=np.float64)
-    y = np.zeros(n_samples, dtype=np.int64)
-    subnets: list[str] = []
-
-    subnet_pool = [f"10.30.{i}.0/24" for i in range(1, 11)]
-
-    for i in range(n_samples):
-        s_net = subnet_pool[i % len(subnet_pool)]
-        subnets.append(s_net)
-        is_attack = i % 2 == 1
-        y[i] = 1 if is_attack else 0
-
-        if is_attack:
-            tunnel_type = rng.choice(["dnscat2", "iodine", "dns2tcp"])
-            if tunnel_type == "dnscat2":
-                # dnscat2: very long subdomains, mixed TXT + A queries
-                avg_len = rng.uniform(38.0, 80.0)
-                max_ent = rng.uniform(3.8, 4.5)
-                txt_ratio = rng.uniform(0.15, 0.60)
-                q_count = float(rng.randint(20, 200))
-            elif tunnel_type == "iodine":
-                # Iodine: base32 encoded, very long, mostly NULL/CNAME
-                avg_len = rng.uniform(45.0, 120.0)
-                max_ent = rng.uniform(3.5, 4.3)
-                txt_ratio = rng.uniform(0.05, 0.30)
-                q_count = float(rng.randint(50, 500))
-            else:  # dns2tcp: TXT queries dominate
-                avg_len = rng.uniform(30.0, 60.0)
-                max_ent = rng.uniform(3.2, 4.2)
-                txt_ratio = rng.uniform(0.55, 0.95)
-                q_count = float(rng.randint(10, 100))
-        else:
-            # Benign DNS: short names, low entropy, mostly A records
-            avg_len = rng.uniform(5.0, 28.0)
-            max_ent = rng.uniform(1.5, 3.2)
-            txt_ratio = rng.uniform(0.0, 0.10)
-            q_count = float(rng.randint(1, 50))
-
-        X[i, 0] = avg_len
-        X[i, 1] = max_ent
-        X[i, 2] = txt_ratio
-        X[i, 3] = q_count
-
-    return X, y, subnets
+    data = np.load(REPO_ROOT / "data" / "features" / "t_c_dns_tunnel.npz")
+    return data['X'], data['y'], data['subnets'].tolist()
 
 
 # ---------------------------------------------------------------------------
