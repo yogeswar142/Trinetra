@@ -132,18 +132,21 @@ class PortScanDetector(BaseDetector):
     def predict_proba(self, feat: SrcWindowFeatures) -> float:
         """Returns calibrated continuous probability P(PortScan) in [0, 1]."""
         if self.model is not None:
-            vec = self.extract_feature_vector(feat)
-            if hasattr(self.model, "predict_proba"):
-                raw_prob = float(self.model.predict_proba(vec)[0, 1])
-            elif hasattr(self.model, "score_samples"):
-                raw_score = float(self.model.score_samples(vec)[0])
-                raw_prob = float(1.0 / (1.0 + np.exp(raw_score * 10.0)))
-            else:
-                raw_prob = float(self.model.predict(vec)[0])
+            try:
+                vec = self.extract_feature_vector(feat)
+                if hasattr(self.model, "predict_proba"):
+                    raw_prob = float(self.model.predict_proba(vec)[0, 1])
+                elif hasattr(self.model, "score_samples"):
+                    raw_score = float(self.model.score_samples(vec)[0])
+                    raw_prob = float(1.0 / (1.0 + np.exp(raw_score * 10.0)))
+                else:
+                    raw_prob = float(self.model.predict(vec)[0])
 
-            if self.calibrator is not None:
-                raw_prob = float(self.calibrator.predict(np.array([[raw_prob]]))[0])
-            return float(np.clip(raw_prob, 0.0, 1.0))
+                if self.calibrator is not None:
+                    raw_prob = float(self.calibrator.predict(np.array([[raw_prob]]))[0])
+                return float(np.clip(raw_prob, 0.0, 1.0))
+            except Exception:
+                pass
 
         rule_score, _ = self.rule_evaluate(feat)
         return rule_score

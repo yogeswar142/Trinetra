@@ -202,18 +202,21 @@ class BeaconDetector(BaseDetector):
             return 0.0
 
         if self.model is not None:
-            vec = self.extract_feature_vector(feat)
-            if hasattr(self.model, "predict_proba"):
-                raw_prob = float(self.model.predict_proba(vec)[0, 1])
-            elif hasattr(self.model, "score_samples"):  # Isolation Forest fallback
-                raw_score = float(self.model.score_samples(vec)[0])
-                raw_prob = float(1.0 / (1.0 + np.exp(raw_score * 10.0)))
-            else:
-                raw_prob = float(self.model.predict(vec)[0])
+            try:
+                vec = self.extract_feature_vector(feat)
+                if hasattr(self.model, "predict_proba"):
+                    raw_prob = float(self.model.predict_proba(vec)[0, 1])
+                elif hasattr(self.model, "score_samples"):  # Isolation Forest fallback
+                    raw_score = float(self.model.score_samples(vec)[0])
+                    raw_prob = float(1.0 / (1.0 + np.exp(raw_score * 10.0)))
+                else:
+                    raw_prob = float(self.model.predict(vec)[0])
 
-            if self.calibrator is not None:
-                raw_prob = float(self.calibrator.predict(np.array([[raw_prob]]))[0])
-            return float(np.clip(raw_prob, 0.0, 1.0))
+                if self.calibrator is not None:
+                    raw_prob = float(self.calibrator.predict(np.array([[raw_prob]]))[0])
+                return float(np.clip(raw_prob, 0.0, 1.0))
+            except Exception:
+                pass
 
         # Fallback to rule score
         rule_score, _ = self.rule_evaluate(feat)
@@ -233,6 +236,13 @@ class BeaconDetector(BaseDetector):
         """
         # Minimum sample guard — must have at least 20 observed intervals
         if feat.sample_count < self.min_samples:
+            return None
+
+        # Bursty-traffic early-exit guard:
+        # Real C2 beacons are periodic. If CV >> 0.80 AND autocorr < 0.30,
+        # the traffic is clearly non-periodic (e.g. bursty web, streaming).
+        # Skip ML inference entirely in this case to avoid model FPs.
+        if feat.iat_cv > 0.80 and feat.iat_autocorr < 0.30:
             return None
 
         confidence = self.predict_proba(feat)

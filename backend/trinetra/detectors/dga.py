@@ -368,15 +368,18 @@ class DgaDetector(BaseDetector):
     def predict_proba(self, domain: str) -> float:
         """Returns calibrated P(DGA) in [0, 1]."""
         if self.model is not None:
-            vec = self.extract_feature_vector(domain)
-            if hasattr(self.model, "predict_proba"):
-                raw_prob = float(self.model.predict_proba(vec)[0, 1])
-            else:
-                raw_prob = float(self.model.predict(vec)[0])
+            try:
+                vec = self.extract_feature_vector(domain)
+                if hasattr(self.model, "predict_proba"):
+                    raw_prob = float(self.model.predict_proba(vec)[0, 1])
+                else:
+                    raw_prob = float(self.model.predict(vec)[0])
 
-            if self.calibrator is not None:
-                raw_prob = float(self.calibrator.predict(np.array([[raw_prob]]))[0])
-            return float(np.clip(raw_prob, 0.0, 1.0))
+                if self.calibrator is not None:
+                    raw_prob = float(self.calibrator.predict(np.array([[raw_prob]]))[0])
+                return float(np.clip(raw_prob, 0.0, 1.0))
+            except Exception:
+                pass
 
         rule_score, _ = self.rule_evaluate(domain)
         return rule_score
@@ -399,11 +402,26 @@ class DgaDetector(BaseDetector):
         if len(label) < 4:
             return None
 
+        # Principled DGA signal guard: at least one indicator must be present before
+        # allowing ML to vote. Prevents FPs on benign names like 'google.com'
+        # (entropy≈1.9, perplexity≈20) being overridden by ML model uncertainty.
+        feats = extract_dga_features(domain)
+        char_entropy = feats[1]
+        trigram_pp   = feats[2]
+        label_len    = feats[0]
+        has_dga_signal = (
+            char_entropy >= 3.0
+            or trigram_pp >= 50.0
+            or label_len >= 14.0
+            or feats[3] >= 0.25        # high digit ratio
+        )
+        if not has_dga_signal:
+            return None
+
         confidence = self.predict_proba(domain)
         rule_score, evidence = self.rule_evaluate(domain)
 
         if confidence >= self.confidence_threshold and not evidence:
-            feats = extract_dga_features(domain)
             evidence.append(
                 EvidenceItem(
                     feature="ml_dga_confidence",
@@ -587,15 +605,18 @@ class DnsTunnelDetector(BaseDetector):
             return 0.0
 
         if self.model is not None:
-            vec = self.extract_feature_vector(feat)
-            if hasattr(self.model, "predict_proba"):
-                raw_prob = float(self.model.predict_proba(vec)[0, 1])
-            else:
-                raw_prob = float(self.model.predict(vec)[0])
+            try:
+                vec = self.extract_feature_vector(feat)
+                if hasattr(self.model, "predict_proba"):
+                    raw_prob = float(self.model.predict_proba(vec)[0, 1])
+                else:
+                    raw_prob = float(self.model.predict(vec)[0])
 
-            if self.calibrator is not None:
-                raw_prob = float(self.calibrator.predict(np.array([[raw_prob]]))[0])
-            return float(np.clip(raw_prob, 0.0, 1.0))
+                if self.calibrator is not None:
+                    raw_prob = float(self.calibrator.predict(np.array([[raw_prob]]))[0])
+                return float(np.clip(raw_prob, 0.0, 1.0))
+            except Exception:
+                pass
 
         rule_score, _ = self.rule_evaluate(feat)
         return rule_score
