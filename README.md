@@ -6,7 +6,7 @@
 *Theme: Blockchain & Cybersecurity*
 
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg?logo=python&logoColor=white)](https://python.org)
-[![Tests Status](https://img.shields.io/badge/tests-120%20passed-success.svg?logo=pytest&logoColor=white)](tests/)
+[![Tests Status](https://img.shields.io/badge/tests-147%20passed-success.svg?logo=pytest&logoColor=white)](tests/)
 [![Passive Sensor](https://img.shields.io/badge/ingest-receive--only%20(air--gap)-red.svg?logo=shield&logoColor=white)](tests/test_no_transmit.py)
 [![Forensic Ledger](https://img.shields.io/badge/ledger-Ed25519%20%2B%20Merkle%20Tree-orange.svg?logo=blockchaindotcom&logoColor=white)](backend/trinetra/ledger.py)
 [![Compliance](https://img.shields.io/badge/compliance-PS%2026145%20Matrix-purple.svg)](ps_compliance_matrix.md)

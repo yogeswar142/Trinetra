@@ -1,0 +1,150 @@
+{
+  "phase": "Phase 1: Ingest & Stateful Flow Table",
+  "timestamp_utc": "2026-09-29T15:50:48.074817+00:00",
+  "hardware_environment": {
+    "platform": "Windows-10-10.0.28000-SP0",
+    "processor": "ARMv8 (64-bit) Family 8 Model 2 Revision 101, Qualcomm Technologies Inc",
+    "architecture": "64bit",
+    "python_version": "3.11.9",
+    "cpu_count_logical": 6,
+    "docker_version": "Docker executable unavailable",
+    "cores_used_in_benchmark": 1,
+    "ram_total_gb": "psutil_not_installed"
+  },
+  "methodology": {
+    "repetitions": 5,
+    "packets_per_run": 20000,
+    "latency_definition": "time.perf_counter_ns() per packet entering pipeline until flow record update and expiry evaluation completes.",
+    "components_included": "PcapIngest + FlowTable (bidirectional aggregation, ScenarioTopology direction labelling, PassiveTcpTracker, timestamp-driven expiry) + Alert Stub.",
+    "components_excluded": "AI/ML inference models (Phase 2), LLM narration (Phase 3), WebSocket dashboard (Phase 3)."
+  },
+  "stage1_parse_only": {
+    "repetitions": 5,
+    "packet_count": 20000,
+    "total_bytes": 1520024,
+    "packets_per_sec": {
+      "median": 8137.468203354519,
+      "min": 7963.901862724547,
+      "max": 8197.84582745723,
+      "stddev": 95.49977737359032,
+      "raw": [
+        7963.901862724547,
+        8195.56251264398,
+        8197.84582745723,
+        8137.468203354519,
+        8112.855005320173
+      ]
+    },
+    "throughput_mbps": {
+      "median": 4.9476587873343,
+      "min": 4.842128785994407,
+      "max": 4.98436896241394,
+      "stddev": 0.05806478144100577,
+      "raw": [
+        4.842128785994407,
+        4.982980685087663,
+        4.98436896241394,
+        4.9476587873343,
+        4.932693726642716
+      ]
+    },
+    "peak_memory_mb": {
+      "median": 0.009319305419921875,
+      "max": 0.009984016418457031,
+      "raw": [
+        0.009984016418457031,
+        0.009349822998046875,
+        0.009319305419921875,
+        0.009288787841796875,
+        0.009258270263671875
+      ]
+    }
+  },
+  "stage2_full_phase1_pipeline": {
+    "repetitions": 5,
+    "packet_count": 20000,
+    "flows_emitted": 19992,
+    "total_bytes": 1520024,
+    "packets_per_sec": {
+      "median": 2180.767765460865,
+      "min": 2114.7365543663927,
+      "max": 2186.834167081679,
+      "stddev": 37.12788261343107,
+      "raw": [
+        2181.4902364086633,
+        2116.0336354520955,
+        2180.767765460865,
+        2114.7365543663927,
+        2186.834167081679
+      ]
+    },
+    "flows_per_sec": {
+      "median": 2179.8954583546806,
+      "min": 2113.890659744646,
+      "max": 2185.9594334148464,
+      "stddev": 37.11303146038572,
+      "raw": [
+        2180.6176403141,
+        2115.1872219979145,
+        2179.8954583546806,
+        2113.890659744646,
+        2185.9594334148464
+      ]
+    },
+    "throughput_mbps": {
+      "median": 1.3259277367707543,
+      "min": 1.285780126525689,
+      "max": 1.3296161671936648,
+      "stddev": 0.022574109056639105,
+      "raw": [
+        1.3263670060427368,
+        1.2865687642777743,
+        1.3259277367707543,
+        1.285780126525689,
+        1.3296161671936648
+      ]
+    },
+    "latency_us": {
+      "p50": 284.8,
+      "p95": 334.3,
+      "p99": 417.6,
+      "raw_p50": [
+        286.2,
+        285.4,
+        283.0,
+        284.8,
+        282.8
+      ],
+      "raw_p95": [
+        334.3,
+        340.1,
+        323.0,
+        351.3,
+        320.0
+      ],
+      "raw_p99": [
+        417.6,
+        451.8,
+        401.8,
+        485.4,
+        399.3
+      ]
+    },
+    "latency_ms": {
+      "p50": 0.2848,
+      "p95": 0.3343,
+      "p99": 0.4176
+    },
+    "peak_memory_mb": {
+      "median": 45.75904369354248,
+      "max": 45.872939109802246,
+      "raw": [
+        45.872939109802246,
+        45.86817455291748,
+        45.75904369354248,
+        45.75899410247803,
+        45.75900936126709
+      ]
+    }
+  }
+}

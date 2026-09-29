@@ -40,6 +40,10 @@ def shannon_entropy_bytes(data: bytes) -> float:
     return float(-np.sum(p * np.log2(p)))
 
 
+# Alias for convenience
+shannon_entropy = shannon_entropy_bytes
+
+
 def categorical_entropy(items: Sequence[Any]) -> float:
     """
     Computes Shannon entropy over categorical tokens (e.g. unique source IPs in a window).

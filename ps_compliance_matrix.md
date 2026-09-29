@@ -24,10 +24,11 @@
 | Passive receive-only (data diode / optical TAP) | `DONE` | [`config.py#EnclaveConfig.read_only_mode`](backend/trinetra/config.py) | Static analysis test enforces no transmit sockets |
 | No payload decryption (metadata-only analysis) | `DONE` | [`schemas.py#FlowEvent`](backend/trinetra/schemas.py) — only metadata fields; [`tls_parser.py`](backend/trinetra/features/tls_parser.py) — handshake fields only | QUIC Initial key derivation explicitly NOT implemented (C2 constraint) |
 | No transmitting sockets in ingest layer | `DONE` | [`tests/test_no_transmit.py`](tests/test_no_transmit.py) | Static AST scan + import-time socket patch; CI must pass |
-| Support PCAP as input | `PLANNED (Ph1)` | `backend/trinetra/ingest/pcap.py` | dpkt-based |
-| Support live packet capture from TAP interface | `PLANNED (Ph1)` | `backend/trinetra/ingest/pcap.py` | libpcap via dpkt |
-| Support NetFlow / IPFIX binary flow records | `PLANNED (Ph1)` | `backend/trinetra/ingest/netflow.py` | NetFlow v9 binary UDP; python-netflow or struct parser |
-| QUIC traffic handling | `DONE (metadata only)` | [`schemas.py#FlowEvent.quic_*`](backend/trinetra/schemas.py) | Long-header fields, version, connection-ID lengths, packet size/timing. No key derivation. |
+| Support PCAP as input | `DONE` | [`backend/trinetra/ingest/pcap.py`](backend/trinetra/ingest/pcap.py) | dpkt-based, classic pcap & pcapng, 802.1Q & 802.1ad QinQ VLAN, IPv4/IPv6, fragment dropping with counters |
+| Support live packet capture from TAP interface | `DONE` | [`backend/trinetra/ingest/pcap.py`](backend/trinetra/ingest/pcap.py) | Stream interface accepts binary stream from file or stdin/pipe from raw TAP |
+| Support NetFlow / IPFIX binary flow records | `DONE` | [`backend/trinetra/ingest/netflow.py`](backend/trinetra/ingest/netflow.py) | Original binary RFC 3954 NetFlow v9 parser, out-of-order template queuing, options templates, unknown field tolerance |
+| Stateful flow table & passive TCP state tracking | `DONE` | [`backend/trinetra/ingest/flow_table.py`](backend/trinetra/ingest/flow_table.py) & [`tcp_tracker.py`](backend/trinetra/ingest/tcp_tracker.py) | Bidirectional normalization, deterministic timestamp-driven expiry, bounded LRU eviction, duplicates & midstream handling |
+| QUIC traffic handling | `DONE (metadata only)` | [`schemas.py#FlowEvent.quic_*`](backend/trinetra/schemas.py), [`pcap.py`](backend/trinetra/ingest/pcap.py) | Long-header fields, version, connection-ID lengths, packet size/timing. No key derivation. |
 
 ---
 
@@ -108,9 +109,9 @@
 
 | PS Requirement | Status | Code Location | Notes |
 |---|---|---|---|
-| Full pipeline benchmark (measured, not assumed) | `PLANNED (Ph1)` | `scripts/benchmark_pipeline.py` | Reports flows/sec, Mbps, p50/p95/p99 latency + hardware specs |
-| Benchmark reproducible from `make benchmark` | `PLANNED (Ph1)` | `Makefile` | Produces timestamped JSON results file |
-| All performance numbers from measured data | `DONE (policy)` | [`research_notes.md §7`](research_notes.md) | All unmeasured numbers removed from plan; first numbers in Phase 1 |
+| Full pipeline benchmark (measured, not assumed) | `DONE` | [`scripts/benchmark_pipeline.py`](scripts/benchmark_pipeline.py) | Reports packets/s, flows/s, Mbps, p50/p95/p99 latency + hardware specs |
+| Benchmark reproducible from `make benchmark` | `DONE` | [`Makefile`](Makefile), [`scripts/benchmark_pipeline.py`](scripts/benchmark_pipeline.py) | Produces timestamped JSON in `benchmarks/results/` |
+| All performance numbers from measured data | `DONE` | [`benchmarks/results/`](benchmarks/results/) | All unmeasured numbers removed; measured on Qualcomm Snapdragon ARM64 |
 
 ---
 
