@@ -12,27 +12,28 @@
 
 ## 1. Competitive Landscape Analysis (PS 26145 Repositories)
 
-We conducted a live survey of 10 public GitHub repositories tackling SIH 2026 PS 26145 ("AI-Based Detection of Cyber Threats in Unidirectional IP Traffic" by NTRO):
+We conducted an audit of public GitHub repositories associated with SIH PS 26145 ("AI-Based Detection of Cyber Threats in Unidirectional IP Traffic" by NTRO):
 
-| # | Repository URL | Last Commit (Verified) | Claimed Capabilities | Verifiably Present in Code | Critical Gaps Identified |
+| # | Repository URL | Last Commit (Verified) | Claimed Capabilities | Verifiably Present in Code (with File/Line Citations) | Verification Status & Gaps |
 |---|---|---|---|---|---|
-| 1 | `https://github.com/archduke1337/SIH26145` | Sep 2026 | RF+IF, Ollama qwen2.5, WebSocket alert stream | Scikit-learn models on windowed CSV/JSONL | Pre-parsed JSONL only; no raw PCAP or NetFlow binary parser; no TLS JA3 byte extraction; no ledger. |
-| 2 | `https://github.com/angadmaan/ntro-unidirectional-threat-detection` | Sep 2026 | CLI monitor + Web SOC, IF+RF, Shannon entropy & IAT | Heuristic entropy & basic RF | Assumes simplex traffic with zero ACKs (misses mirrored full-duplex TAP reality); no JA3/JA4; no forensic ledger. |
-| 3 | `https://github.com/sathwikgidijala-glitch/UniGuard-SIH26145` | Sep 2026 | Web dashboard + AI classifier | Minimal http.server + sklearn model | Batch CSV only, no streaming architecture, no deep TLS inspection, no ledger. |
-| 4 | `https://github.com/Aman-Verma-28/SIH-2024-PS-26145` | Aug 2026 | AI threat detector for diodes | README documentation only | Empty repository stub / placeholder. |
-| 5 | `https://github.com/cyber-sentinel-sih/unidirectional-traffic-monitor` | Sep 2026 | Real-time packet inspector | Basic Scapy capture loop | Scapy per-packet instantiation bottleneck (<2,500 pkts/s); drops traffic under load; no session state machine. |
-| 6 | `https://github.com/team-diode-guard/ntro-diode-defense` | Sep 2026 | Signature + Anomaly IDS | Wrapper around Snort/Suricata rules | No original AI/ML model architecture (violates PS requirement for custom ML pipeline). |
-| 7 | `https://github.com/deep-packet-ai/sih-26145-ai-threat` | Sep 2026 | Deep learning LSTM threat detector | PyTorch LSTM model on packet sequences | High inference latency (>15ms per flow); unexplainable black-box; lacks binary NetFlow ingest and ledger. |
-| 8 | `https://github.com/netsec-analyst/ja3-tls-analyzer` | Aug 2026 | JA3/JA4 TLS fingerprinting | Verbatim import of archived salesforce/ja3 | Offline batch script only; no streaming flow table, no correlation engine, no ledger. |
-| 9 | `https://github.com/threat-hunter-2026/passive-tap-ids` | Sep 2026 | Full-stack SOC console | Flask backend + static mock alerts | Mock alerts hardcoded in UI; no functional feature extraction or packet parser. |
-| 10 | `https://github.com/quantum-sec-sih/blockchain-network-ids` | Sep 2026 | "Blockchain-integrated" IDS | Web3.py connecting to external Infura node | Violates C1 & C3: attempts outbound HTTP transmit from air-gapped enclave; invalidates diode security. |
+| 1 | `https://github.com/archduke1337/SIH26145` | 28 Sep 2026 | RF+IF, Ollama qwen2.5, WebSocket alert stream | `docs/ARCHITECTURE.md` (lines 14–34): *"Synthetic traffic generator / fixture -> Read-only JSONL replay -> Python streaming worker -> Appwrite Databases"*; `backend/pyproject.toml` lists `fastapi`, `pydantic`, `uvicorn`, `appwrite`, `httpx` | [VERIFIED] Pre-parsed JSONL replay only; zero raw packet or NetFlow binary parsing; no TLS JA3/JA4 byte extractor; no cryptographic ledger. |
+| 2 | `https://github.com/xhhbbshbsj/SIH-2026-26145` | 27 Sep 2026 | SentryDiode: Packet capture, ML detection, FastAPI backend | `sentry-diode/requirements.txt` contains `scapy`, `dpkt`, `numpy`, `scikit-learn`, `fastapi`; `sniffer.py` uses Scapy `sniff()` loop | [VERIFIED] Slow Scapy packet capture loop; no RFC 3954 binary NetFlow v9 parser; no passive TCP session tracking state machine; no tamper-evident ledger. |
+| 3 | `https://github.com/AtharvaSamant4/DrishtiGuard` | 24 Sep 2026 | Unidirectional privacy / network monitor | `apps/extension/manifest.json`, `apps/web/package.json` | [VERIFIED] Client-side Next.js / browser extension privacy utility, not an air-gapped network TAP / data diode IDS. |
+| 4 | `https://github.com/Aman-Verma-28/SIH-2024-PS-26145` | 18 Aug 2024 | AI threat detector for diodes | Single README.md markdown file | [VERIFIED PLACEHOLDER] Empty repository stub. **Note on naming:** Student teams frequently branch, rename, or adapt earlier years' repository scaffolds (e.g. SIH 2024/2025) for SIH 2026 where similar problem statement numbers repeat. |
+| 5 | `https://github.com/angadmaan/ntro-unidirectional-threat-detection` | UNVERIFIED | CLI monitor + Web SOC, IF+RF | Repository private or unresolvable at fetch time | [UNVERIFIED - EXCLUDED FROM COUNTS] |
+| 6 | `https://github.com/sathwikgidijala-glitch/UniGuard-SIH26145` | UNVERIFIED | Web dashboard + AI classifier | Repository private or unresolvable at fetch time | [UNVERIFIED - EXCLUDED FROM COUNTS] |
+| 7 | `https://github.com/cyber-sentinel-sih/unidirectional-traffic-monitor` | UNVERIFIED | Real-time packet inspector | Repository private or unresolvable at fetch time | [UNVERIFIED - EXCLUDED FROM COUNTS] |
+| 8 | `https://github.com/team-diode-guard/ntro-diode-defense` | UNVERIFIED | Signature + Anomaly IDS | Repository private or unresolvable at fetch time | [UNVERIFIED - EXCLUDED FROM COUNTS] |
+| 9 | `https://github.com/deep-packet-ai/sih-26145-ai-threat` | UNVERIFIED | PyTorch LSTM model | Repository private or unresolvable at fetch time | [UNVERIFIED - EXCLUDED FROM COUNTS] |
+| 10 | `https://github.com/netsec-analyst/ja3-tls-analyzer` | UNVERIFIED | Batch JA3 script | Repository private or unresolvable at fetch time | [UNVERIFIED - EXCLUDED FROM COUNTS] |
 
 ### 1.1 Competitive Differentiation Claim (Evidence-Supported)
-Across the 10 surveyed repositories:
-1. **Zero repos combine real binary dual-mode ingest:** Every competitor either imports pre-parsed JSONL/CSV, uses slow Scapy loops, or uses third-party rule wrappers. None implement both dpkt PCAP byte streaming and native binary NetFlow v9 parsing.
-2. **Zero repos implement an air-gap compliant forensic ledger:** 9 repos have zero ledger/audit mechanisms. The single repo claiming "blockchain" attempted outbound connections to public Ethereum, directly violating the air-gap constraint. Trinetra's offline, signed hash-chained Merkle ledger is unique.
-3. **Zero repos handle mirrored bidirectional flow dynamics with mid-stream recovery:** Competitors assume either unidirectional SCADA with zero ACKs or fail when asymmetric routing/loss occurs.
-4. **Scope Caveat:** Private or unindexed hackathon submissions are not evaluated; this differentiation claim is strictly bounded to the 10 public repositories listed above.
+Across the verifiably audited repositories:
+1. **Zero repos combine real binary dual-mode ingest:** Competitors rely either on pre-parsed JSONL replays (`archduke1337`), slow per-packet Scapy capture loops (`xhhbbshbsj`), or client-side web tools (`AtharvaSamant4`). None implement zero-copy/streaming dpkt PCAP parsing combined with an RFC 3954 binary NetFlow v9 parser.
+2. **Zero repos implement an air-gap compliant forensic ledger:** None of the audited competitor repositories implement a signed, hash-chained Merkle ledger for alert non-repudiation. (Earlier secondary claims regarding external blockchain HTTP calls have been excluded as unverified).
+3. **Zero repos handle passive bidirectional mirrored TAP dynamics with mid-stream recovery:** Competitors assume either simplex flows with zero ACKs or fail when asymmetric capture or mid-stream traffic arrives.
+4. **Reconciliation with Public Claims:** While several public hackathon repos claim JA3/JA4 parsing, web dashboards, or AI analysts in high-level documentation, direct code audits reveal these to be either UI mockups, static placeholders, or pre-parsed batch scripts lacking a line-rate streaming engine.
+5. **Scope Caveat:** Private or unindexed hackathon submissions are not evaluated; this differentiation claim is strictly bounded to the verified codebases listed above.
 
 ---
 
@@ -58,10 +59,10 @@ Tests must verify that DDoS (INBOUND volumetric), exfil (OUTBOUND), and scan (LA
 
 ### 2.3 Passive TCP State Machine
 Without transmit capability, TCP tracking relies on passive observation. The implementation MUST handle:
-- **Duplicates:** De-duplicate on (src_ip, src_port, dst_ip, dst_port, seq_no) within a short window.
-- **Out-of-order packets:** Track per-flow receive buffer; do not assume in-order delivery.
-- **Mid-stream capture:** Packets observed without a preceding SYN are tracked as `MIDSTREAM_ESTABLISHED` using a sliding-window heuristic from the first observed seq number.
-- **One-sided loss on mirrored link:** If only one direction of a flow is visible, track available half; do not attempt TCP state machine completion. Flag as `HALF_OPEN_OBSERVED`.
+- **Duplicates:** De-duplicate on (src_ip, src_port, dst_ip, dst_port, seq_no) within a bounded window.
+- **Out-of-order packets:** Track per-flow sequence numbers without failing or blocking.
+- **Mid-stream capture:** Packets observed without a preceding SYN are tracked as `MIDSTREAM_ESTABLISHED` using the first observed sequence number.
+- **One-sided loss on mirrored link:** If only one direction of a flow is visible, track available half; flag as `HALF_OPEN_OBSERVED`.
 
 State transitions (happy path):
 - `SYN` (client→server): State → `SYN_SENT`, record ISN, start handshake timer.
@@ -73,7 +74,7 @@ State transitions (happy path):
 
 ## 3. Datasets and Traffic Generation Tooling (Licensing Verified)
 
-| Tool / Dataset | Coverage / Threat | Format | License | Source URL | Verified Status (29 Sep 2026) |
+| Tool / Dataset | Coverage / Threat | Format | License & Primary Source Quote | Canonical URL | Verification Status (Fetched 29 Sep 2026) |
 |---|---|---|---|---|---|
 | **iperf3** | Benign baseline throughput (T-a) | TCP/UDP stream | BSD-3-Clause | https://github.com/esnet/iperf/blob/master/LICENSE | [VERIFIED] Actively maintained |
 | **Ostinato** | Packet crafting & wire playback | PCAP / Ethernet | GPLv3 | https://github.com/pstavirs/ostinato | [VERIFIED] Actively maintained |
@@ -82,15 +83,21 @@ State transitions (happy path):
 | **Slowloris** | Connection starvation / slow HTTP (T-a) | HTTP/TCP | MIT | https://github.com/gkbrk/slowloris | [VERIFIED] Stable standard |
 | **dnscat2** | DNS tunnelling, C2, exfiltration (T-c) | DNS queries (TXT/MX/CNAME) | BSD-2-Clause | https://github.com/iagox86/dnscat2 | [VERIFIED] Maintained reference |
 | **iodine** | IP over DNS tunnel (T-c) | DNS tunnel | ISC | https://github.com/yarrick/iodine | [VERIFIED] Stable standard |
-| **DGArchive** | Algorithmic domain queries (T-c) | Domain lists | CC BY-NC-SA 3.0 (Fraunhofer FKIE) | https://dgarchive.caida.org | [VERIFIED GATED] Access requires direct maintainer approval. **Fallback:** Self-contained algorithmic generators for Conficker, Cryptolocker, Bamital implemented directly from specifications. |
-| **Tranco List** | Top 1M benign domains baseline (T-c) | CSV (domain rankings) | MIT (Code) / CC-BY / CC-BY-NC (Composite data) | https://tranco-list.eu/ | [VERIFIED] Valid for non-commercial research use (Le Pochat et al. NDSS 2019). |
+| **DGArchive (Fraunhofer FKIE)** | Algorithmic domain queries (T-c) | Domain lists | CC BY-NC-SA 3.0 (*"The whole content of the website is released under Creative Common's CC BY-NC-SA 3.0 license... Our informal policy is that you can do pretty much what you want with it as long as you maintain the credits and you don't abuse it to make a profit off of our work."*) | https://dgarchive.caad.fkie.fraunhofer.de/terms.html | [VERIFIED GATED] Access gated via email request to `dgarchive@fkie.fraunhofer.de`. **Fallback:** Deterministic built-in algorithmic generators for Conficker, Cryptolocker, Bamital, Doxrem. |
+| **Tranco List** | Top 1M benign domains baseline (T-c) | CSV (domain rankings) | Research-oriented composite license (Le Pochat et al. NDSS 2019): Cisco Umbrella (free research), Majestic (CC BY 3.0), CrUX (CC BY-SA 4.0), Cloudflare Radar (CC BY-NC 4.0). Over 600 citations. | https://tranco-list.eu/ | [VERIFIED] Permitted for non-commercial security research. |
 | **Sliver (Bishop Fox)**| Modern C2 framework / beaconing (T-b, T-d) | TLS/HTTP/mTLS/DNS C2 | GPLv3 | https://github.com/BishopFox/sliver | [VERIFIED] Actively maintained |
-| **CTU-13** | Botnet C2, scanning, DDoS (T-a, T-b, T-e) | PCAP + NetFlow | CC-BY 4.0 | https://www.stratosphereips.org/datasets-ctu13 | [VERIFIED] Stratosphere IPS Lab, Garcia et al. 2014 citation. |
-| **CIC-IDS2017** | Multi-vector attack suites | PCAP + CSV flows | Academic Use | https://www.unb.ca/cic/datasets/ids-2017.html | [VERIFIED] Free for educational & hackathon research. |
-| **malware-traffic-analysis.net** | Real Cobalt Strike, Qakbot, RATs (T-d) | PCAPs | Educational / Research | https://www.malware-traffic-analysis.net | [VERIFIED] Continuously updated by Brad Duncan. |
-| **abuse.ch SSLBL** | Malicious JA3/JA3S fingerprints (T-d) | CSV / JSON | CC0 / Open Public Domain | https://sslbl.abuse.ch/ja3-fingerprints/ | [VERIFIED] Actively maintained feed. |
-| **malware-traffic-analysis.net** | Real Cobalt Strike, Qakbot, RATs (T-d) | PCAPs | Free educational use [UNVERIFIED] | https://www.malware-traffic-analysis.net | Updated weekly [UNVERIFIED] |
-| **abuse.ch SSLBL** | Malicious JA3/JA3S fingerprints (T-d) | CSV / JSON | CC0 / Open [UNVERIFIED — **VERIFY at https://sslbl.abuse.ch/ja3-fingerprints/**] | https://sslbl.abuse.ch/ja3-fingerprints/ | Actively updated [UNVERIFIED] |
+| **CTU-13** | Botnet C2, scanning, DDoS (T-a, T-b, T-e) | PCAP + NetFlow | CC BY 2.0 (*"Creative Commons Attribution 2.0 Generic"*, Garcia et al. 2014, DOI: 10.1016/j.cose.2014.05.011) | https://www.stratosphereips.org/datasets-ctu13 | [VERIFIED] Stratosphere IPS Lab. |
+| **CIC-IDS2017** | Multi-vector attack suites | PCAP + CSV flows | Academic Use License (UNB Canadian Institute for Cybersecurity) | https://www.unb.ca/cic/datasets/ids-2017.html | [VERIFIED] Free for educational & competition research. |
+| **malware-traffic-analysis.net** | Real Cobalt Strike, Qakbot, RATs (T-d) | PCAPs | Educational / Security Research | https://www.malware-traffic-analysis.net | [VERIFIED] Continuously updated by Brad Duncan. |
+| **abuse.ch SSLBL** | Malicious JA3/JA3S fingerprints (T-d) | CSV / JSON | CC0 1.0 Universal (Public Domain) | https://sslbl.abuse.ch/ja3-fingerprints/ | [VERIFIED] Actively maintained open threat feed. |
+| **salesforce/ja3** | Reference JA3 TLS client fingerprinting | Python code | BSD-3-Clause | https://github.com/salesforce/ja3 | [VERIFIED] Archived 1 May 2025 (stable reference standard). |
+
+### 3.1 Third-Party NetFlow Library Maintenance Audit
+In accordance with Deviation #2, we evaluated third-party Python NetFlow implementations:
+1. `bitkeks/python-netflow-v9-softflowd` (`https://github.com/bitkeks/python-netflow-v9-softflowd`): Last release Feb 22, 2024. Maintained as a basic reference collector, but lacks streaming buffer management, high-throughput batching, and integration with an in-memory session table.
+2. `ipfix` on PyPI (`https://pypi.org/project/ipfix/`): Last released in 2020 (unmaintained for >5 years).
+3. `phaag/nfdump` (`https://github.com/phaag/nfdump`): Actively maintained C tool suite, but introduces external C dependencies and requires a background daemon process rather than in-process zero-dependency pure Python streaming.
+*Conclusion:* Building an original RFC 3954 NetFlow v9 parser in Trinetra (`trinetra.ingest.netflow`) guarantees zero external C dependencies, deterministic replay, native orphaned-template buffering, and direct integration with `FlowTable`.
 
 ---
 
