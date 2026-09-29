@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches and test outputs
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage_html/
+.coverage
+.coverage.*
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Sensitive / Enclave Local Keys and Ledger Runtime Artifacts
+data/ledger/*.jsonl
+data/signatures/*.key
+!data/signatures/.gitkeep
+!data/ledger/.gitkeep
+!data/fixtures/.gitkeep
+data/benchmark_results_*.json
+
+# OS and IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

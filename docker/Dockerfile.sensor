@@ -1,0 +1,32 @@
+FROM python:3.11-slim
+
+LABEL maintainer="Trinetra Team <sih2026@example.com>"
+LABEL description="Trinetra sensor container — passive network threat detection"
+
+WORKDIR /app
+
+# Install system dependencies (libpcap for live capture if needed later)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpcap-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency spec first for layer caching
+COPY pyproject.toml ./
+COPY requirements.txt ./
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -e ".[dev,benchmark]" || pip install --no-cache-dir -r requirements.txt
+
+# Copy source code (read-only mount in compose overrides this for dev)
+COPY backend/ ./backend/
+
+# Create data directories
+RUN mkdir -p /app/data/ledger /app/data/fixtures /app/data/signatures /app/config
+
+# Run as non-root user
+RUN useradd -m -u 1000 trinetra && chown -R trinetra:trinetra /app
+USER trinetra
+
+EXPOSE 8765
+
+CMD ["python", "-m", "trinetra.main"]
