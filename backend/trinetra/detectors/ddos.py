@@ -52,7 +52,7 @@ class DdosDetector(BaseDetector):
     ) -> None:
         super().__init__(
             detector_id="DETECTOR_T_A_DDOS",
-            threat_class=ThreatClass.T_A_DDOS,
+            threat_class=ThreatClass.VOLUMETRIC_DDOS,
             model_version=model_version,
             confidence_threshold=confidence_threshold,
             deduplicator=deduplicator,

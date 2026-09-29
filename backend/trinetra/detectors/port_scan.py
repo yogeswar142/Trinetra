@@ -51,7 +51,7 @@ class PortScanDetector(BaseDetector):
     ) -> None:
         super().__init__(
             detector_id="DETECTOR_T_E_PORTSCAN",
-            threat_class=ThreatClass.T_E_PORT_SCAN,
+            threat_class=ThreatClass.PORT_SCANNING,
             model_version=model_version,
             confidence_threshold=confidence_threshold,
             deduplicator=deduplicator,

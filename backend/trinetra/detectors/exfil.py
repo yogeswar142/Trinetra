@@ -79,7 +79,7 @@ class ExfiltrationDetector(BaseDetector):
     ) -> None:
         super().__init__(
             detector_id="DETECTOR_T_F_EXFIL",
-            threat_class=ThreatClass.T_F_EXFIL,
+            threat_class=ThreatClass.DATA_EXFILTRATION,
             model_version=model_version,
             confidence_threshold=confidence_threshold,
             deduplicator=deduplicator,
