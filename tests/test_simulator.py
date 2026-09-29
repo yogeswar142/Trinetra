@@ -266,3 +266,60 @@ class TestScenarioMetadata:
         flows = collect_flows(gen, max_count=5)
         for flow in flows:
             assert flow.ingest_source == "simulator"
+
+
+# ---------------------------------------------------------------------------
+# Encrypted Malware TLS Scenario (T-d)
+# ---------------------------------------------------------------------------
+class TestEncryptedMalwareTLSScenario:
+    def test_malware_tls_flows_are_outbound(self) -> None:
+        from trinetra.simulator import SCENARIO_ENCRYPTED_MALWARE_TLS, generate_encrypted_malware_tls
+        gen = generate_encrypted_malware_tls(SCENARIO_ENCRYPTED_MALWARE_TLS, DEFAULT_CONFIG)
+        flows = collect_flows(gen, max_count=10)
+        assert flows
+        assert_direction_correctness(flows, Direction.OUTBOUND, "encrypted_malware_tls")
+
+    def test_malware_tls_has_ja3_and_sni(self) -> None:
+        from trinetra.simulator import SCENARIO_ENCRYPTED_MALWARE_TLS, generate_encrypted_malware_tls
+        gen = generate_encrypted_malware_tls(SCENARIO_ENCRYPTED_MALWARE_TLS, DEFAULT_CONFIG)
+        flows = collect_flows(gen, max_count=5)
+        for f in flows:
+            assert f.tls_ja3 is not None
+            assert f.tls_sni is not None
+            assert f.tls_cert_self_signed is True
+
+
+# ---------------------------------------------------------------------------
+# Deterministic Emission & Real PCAP Generation
+# ---------------------------------------------------------------------------
+class TestEmissionAndPcapGeneration:
+    def test_emit_scenario_flows_is_deterministic(self) -> None:
+        from trinetra.simulator import emit_scenario_flows, SCENARIO_DDOS_SYN_FLOOD
+        flows1 = emit_scenario_flows(SCENARIO_DDOS_SYN_FLOOD, max_flows=15)
+        flows2 = emit_scenario_flows(SCENARIO_DDOS_SYN_FLOOD, max_flows=15)
+        assert len(flows1) == 15
+        assert len(flows2) == 15
+        for f1, f2 in zip(flows1, flows2):
+            assert f1.src_ip == f2.src_ip
+            assert f1.dst_ip == f2.dst_ip
+            assert f1.src_port == f2.src_port
+            assert f1.timestamp == f2.timestamp
+
+    def test_emit_scenario_pcap_creates_valid_pcap(self, tmp_path: Path) -> None:
+        import dpkt
+        from trinetra.simulator import emit_scenario_pcap, SCENARIO_DDOS_SYN_FLOOD
+        pcap_path = tmp_path / "test_ddos.pcap"
+        emit_scenario_pcap(SCENARIO_DDOS_SYN_FLOOD, pcap_path, max_packets=20)
+        assert pcap_path.exists()
+        assert pcap_path.stat().st_size > 0
+
+        # Read back with dpkt.pcap.Reader to verify it's a real valid PCAP
+        with open(pcap_path, "rb") as f:
+            reader = dpkt.pcap.Reader(f)
+            packets = list(reader)
+            assert len(packets) == 20
+            ts, buf = packets[0]
+            eth = dpkt.ethernet.Ethernet(buf)
+            assert isinstance(eth.data, dpkt.ip.IP)
+            assert isinstance(eth.data.data, dpkt.tcp.TCP)
+

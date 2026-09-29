@@ -27,13 +27,18 @@ DIRECTION LABELLING REQUIREMENT:
 """
 from __future__ import annotations
 
+import ipaddress
 import random
+import struct
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Iterator
 
-from trinetra.config import EnclaveConfig, ScenarioTopology
-from trinetra.schemas import Direction, FlowEvent
+import dpkt
+
+from trinetra.config import DEFAULT_CONFIG, EnclaveConfig, ScenarioTopology
+from trinetra.schemas import Direction, FlowEvent, ThreatClass
 
 
 # ---------------------------------------------------------------------------
@@ -46,12 +51,15 @@ class SimulatorScenario:
 
     Attributes:
         name: Human-readable scenario name.
+        threat_class: Mapped threat category (T-a to T-f).
         topology: Per-scenario network topology (victim vs attacker networks).
         description: What this scenario tests.
         flow_rate_hz: Target flow generation rate in flows/second.
         duration_seconds: Total scenario duration.
+        rng_seed: Fixed random seed for deterministic generation.
     """
     name: str
+    threat_class: ThreatClass
     topology: ScenarioTopology
     description: str = ""
     flow_rate_hz: float = 1000.0
@@ -60,14 +68,15 @@ class SimulatorScenario:
 
 
 # ---------------------------------------------------------------------------
-# Canonical test scenarios
+# Canonical test scenarios (Covers ALL T-a through T-f)
 # ---------------------------------------------------------------------------
 SCENARIO_DDOS_SYN_FLOOD = SimulatorScenario(
     name="ddos_syn_flood",
+    threat_class=ThreatClass.VOLUMETRIC_DDOS,
     topology=ScenarioTopology(
         scenario_name="ddos_syn_flood",
         internal_networks=["10.0.1.0/24"],      # Victim subnet
-        attacker_networks=["10.0.2.0/24"],      # External (not in internal)
+        attacker_networks=["10.0.2.0/24"],      # External attacker
         description=(
             "SYN flood from multiple attacker IPs in 10.0.2.0/24 "
             "targeting victim in 10.0.1.0/24. All attack traffic is INBOUND."
@@ -76,14 +85,34 @@ SCENARIO_DDOS_SYN_FLOOD = SimulatorScenario(
     description="High-volume SYN flood DDoS scenario (T-a)",
     flow_rate_hz=5000.0,
     duration_seconds=5.0,
+    rng_seed=42,
+)
+
+SCENARIO_BEACON = SimulatorScenario(
+    name="c2_beaconing",
+    threat_class=ThreatClass.BOTNET_C2_BEACONING,
+    topology=ScenarioTopology(
+        scenario_name="c2_beaconing",
+        internal_networks=["172.16.0.0/24"],    # Infected internal host
+        attacker_networks=["203.0.113.0/24"],   # Public C2 server range
+        description=(
+            "Infected host in 172.16.0.0/24 beaconing to external C2 in "
+            "203.0.113.0/24. Beacon traffic is OUTBOUND."
+        ),
+    ),
+    description="Regular C2 beaconing (T-b)",
+    flow_rate_hz=1.0,
+    duration_seconds=30.0,
+    rng_seed=101,
 )
 
 SCENARIO_DNS_TUNNEL = SimulatorScenario(
     name="dns_tunnel",
+    threat_class=ThreatClass.DNS_TUNNELLING,
     topology=ScenarioTopology(
         scenario_name="dns_tunnel",
         internal_networks=["192.168.10.0/24"],  # Compromised internal host
-        attacker_networks=["198.51.100.0/24"],  # External C2 server
+        attacker_networks=["198.51.100.0/24"],  # External C2 DNS server
         description=(
             "Compromised host in 192.168.10.0/24 tunnelling data via DNS "
             "to external C2 at 198.51.100.0/24. Traffic is OUTBOUND."
@@ -91,43 +120,31 @@ SCENARIO_DNS_TUNNEL = SimulatorScenario(
     ),
     description="DNS tunnelling C2 exfil scenario (T-c)",
     flow_rate_hz=100.0,
-    duration_seconds=30.0,
+    duration_seconds=10.0,
+    rng_seed=202,
 )
 
-SCENARIO_BEACON = SimulatorScenario(
-    name="c2_beaconing",
+SCENARIO_ENCRYPTED_MALWARE_TLS = SimulatorScenario(
+    name="encrypted_malware_tls",
+    threat_class=ThreatClass.ENCRYPTED_MALWARE_TLS,
     topology=ScenarioTopology(
-        scenario_name="c2_beaconing",
-        internal_networks=["172.16.0.0/24"],    # Infected host network
-        attacker_networks=["203.0.113.0/24"],   # Public C2 server range
+        scenario_name="encrypted_malware_tls",
+        internal_networks=["192.168.50.0/24"],  # Infected internal endpoint
+        attacker_networks=["198.51.100.0/24"],  # C2 / malware drop site
         description=(
-            "Infected host in 172.16.0.0/24 beaconing to C2 server in "
-            "203.0.113.0/24. Beacon traffic is OUTBOUND."
+            "Infected host establishing TLS connection with known malicious "
+            "Cobalt Strike JA3 fingerprint and rigid PST sequence. OUTBOUND."
         ),
     ),
-    description="Regular C2 beaconing (T-b)",
-    flow_rate_hz=0.1,     # ~1 beacon per 10 seconds
-    duration_seconds=120.0,
-)
-
-SCENARIO_EXFIL = SimulatorScenario(
-    name="data_exfiltration",
-    topology=ScenarioTopology(
-        scenario_name="data_exfiltration",
-        internal_networks=["10.10.0.0/16"],     # Corporate internal network
-        attacker_networks=["198.18.0.0/24"],    # External exfil destination
-        description=(
-            "Compromised host in 10.10.0.0/16 exfiltrating data to "
-            "198.18.0.0/24. High egress/ingress byte ratio. OUTBOUND."
-        ),
-    ),
-    description="Data exfiltration scenario (T-f)",
-    flow_rate_hz=10.0,
-    duration_seconds=60.0,
+    description="Malware in Encrypted TLS Session (T-d)",
+    flow_rate_hz=5.0,
+    duration_seconds=10.0,
+    rng_seed=303,
 )
 
 SCENARIO_PORT_SCAN = SimulatorScenario(
     name="port_scan",
+    threat_class=ThreatClass.PORT_SCANNING,
     topology=ScenarioTopology(
         scenario_name="port_scan",
         internal_networks=["10.1.0.0/16"],      # Target network
@@ -140,14 +157,34 @@ SCENARIO_PORT_SCAN = SimulatorScenario(
     description="Port scan / reconnaissance scenario (T-e)",
     flow_rate_hz=2000.0,
     duration_seconds=5.0,
+    rng_seed=404,
+)
+
+SCENARIO_EXFIL = SimulatorScenario(
+    name="data_exfiltration",
+    threat_class=ThreatClass.DATA_EXFILTRATION,
+    topology=ScenarioTopology(
+        scenario_name="data_exfiltration",
+        internal_networks=["10.10.0.0/16"],     # Corporate internal network
+        attacker_networks=["198.18.0.0/24"],    # External exfil destination
+        description=(
+            "Compromised host in 10.10.0.0/16 exfiltrating data to "
+            "198.18.0.0/24. High egress/ingress byte ratio. OUTBOUND."
+        ),
+    ),
+    description="Data exfiltration scenario (T-f)",
+    flow_rate_hz=10.0,
+    duration_seconds=10.0,
+    rng_seed=505,
 )
 
 ALL_SCENARIOS = [
     SCENARIO_DDOS_SYN_FLOOD,
-    SCENARIO_DNS_TUNNEL,
     SCENARIO_BEACON,
-    SCENARIO_EXFIL,
+    SCENARIO_DNS_TUNNEL,
+    SCENARIO_ENCRYPTED_MALWARE_TLS,
     SCENARIO_PORT_SCAN,
+    SCENARIO_EXFIL,
 ]
 
 
@@ -163,17 +200,15 @@ def _random_ip(subnet: str, rng: random.Random) -> str:
 def generate_ddos_syn_flood(
     scenario: SimulatorScenario,
     config: EnclaveConfig,
+    base_time: float = 1700000000.0,
 ) -> Iterator[FlowEvent]:
     """
     Generate SYN flood packets.
-
-    Produces high-volume TCP SYN packets from spoofed attacker IPs to a victim IP.
     Expected direction: INBOUND.
-    Expected detection signals: high syn_ratio, high pps, high src_entropy.
     """
     rng = random.Random(scenario.rng_seed)
     victim_ip = _random_ip(scenario.topology.internal_networks[0], rng)
-    t = time.time()
+    t = base_time
     end_t = t + scenario.duration_seconds
     interval = 1.0 / scenario.flow_rate_hz
 
@@ -183,7 +218,7 @@ def generate_ddos_syn_flood(
             attacker_ip, victim_ip, scenario.topology.internal_networks
         )
         yield FlowEvent(
-            timestamp=t,
+            timestamp=round(t, 6),
             src_ip=attacker_ip,
             src_port=rng.randint(1024, 65535),
             dst_ip=victim_ip,
@@ -195,142 +230,136 @@ def generate_ddos_syn_flood(
             direction=Direction(direction),
             ingest_source="simulator",
         )
-        t += interval + rng.gauss(0, interval * 0.05)  # Small jitter
+        t += interval + rng.uniform(0, interval * 0.05)
+
+
+def generate_beacon(
+    scenario: SimulatorScenario,
+    config: EnclaveConfig,
+    base_time: float = 1700000000.0,
+    interval_seconds: float = 5.0,
+    jitter_pct: float = 0.05,
+) -> Iterator[FlowEvent]:
+    """
+    Generate regular C2 beacon flows.
+    Expected direction: OUTBOUND.
+    """
+    rng = random.Random(scenario.rng_seed)
+    src_ip = _random_ip(scenario.topology.internal_networks[0], rng)
+    dst_ip = _random_ip(scenario.topology.attacker_networks[0], rng)
+    t = base_time
+    end_t = t + scenario.duration_seconds
+
+    while t < end_t:
+        direction = config.classify_direction(src_ip, dst_ip, scenario.topology.internal_networks)
+        yield FlowEvent(
+            timestamp=round(t, 6),
+            src_ip=src_ip,
+            src_port=rng.randint(1024, 65535),
+            dst_ip=dst_ip,
+            dst_port=443,
+            protocol="TCP",
+            length=rng.randint(80, 150),
+            tcp_flags={"SYN": False, "ACK": True, "FIN": False, "RST": False},
+            direction=Direction(direction),
+            ingest_source="simulator",
+        )
+        jitter = rng.uniform(-interval_seconds * jitter_pct, interval_seconds * jitter_pct)
+        t += interval_seconds + jitter
 
 
 def generate_dns_tunnel(
     scenario: SimulatorScenario,
     config: EnclaveConfig,
+    base_time: float = 1700000000.0,
 ) -> Iterator[FlowEvent]:
     """
     Generate DNS tunnelling queries.
-
-    Produces high-entropy, long-label DNS TXT queries from internal host to external C2.
     Expected direction: OUTBOUND.
-    Expected detection signals: high subdomain entropy, query length > 35, TXT record ratio.
     """
     rng = random.Random(scenario.rng_seed)
     src_ip = _random_ip(scenario.topology.internal_networks[0], rng)
     dst_ip = _random_ip(scenario.topology.attacker_networks[0], rng)
     domain = "c2tunnel.example.com"
-    t = time.time()
+    t = base_time
     end_t = t + scenario.duration_seconds
     interval = 1.0 / scenario.flow_rate_hz
 
     while t < end_t:
-        # Generate a high-entropy random subdomain (mimics iodine/dnscat2)
         label_len = rng.randint(36, 63)
         label = "".join(rng.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=label_len))
         query = f"{label}.{domain}"
         direction = config.classify_direction(src_ip, dst_ip, scenario.topology.internal_networks)
         yield FlowEvent(
-            timestamp=t,
+            timestamp=round(t, 6),
             src_ip=src_ip,
             src_port=rng.randint(1024, 65535),
             dst_ip=dst_ip,
             dst_port=53,
             protocol="DNS",
-            length=len(query) + 12,  # Approximate DNS packet size
+            length=len(query) + 12,
             dns_query=query,
             dns_qtype="TXT",
             dns_is_response=False,
             direction=Direction(direction),
             ingest_source="simulator",
         )
-        t += interval + rng.gauss(0, interval * 0.1)
+        t += interval + rng.uniform(0, interval * 0.1)
 
 
-def generate_beacon(
+def generate_encrypted_malware_tls(
     scenario: SimulatorScenario,
     config: EnclaveConfig,
-    interval_seconds: float = 60.0,
-    jitter_pct: float = 0.05,
+    base_time: float = 1700000000.0,
 ) -> Iterator[FlowEvent]:
     """
-    Generate regular C2 beacon flows.
-
-    Produces small TCP flows at a regular interval with low IAT variance.
+    Generate TLS sessions with malicious JA3 fingerprint and distinct PST sequence.
+    Threat class: T-d (Malware in Encrypted TLS Sessions).
     Expected direction: OUTBOUND.
-    Expected detection signals: low CV (< beacon_max_cv), autocorrelation peak.
-
-    Args:
-        interval_seconds: Base beacon interval in seconds.
-        jitter_pct: Jitter fraction applied to interval (0.05 = ±5%).
     """
     rng = random.Random(scenario.rng_seed)
     src_ip = _random_ip(scenario.topology.internal_networks[0], rng)
     dst_ip = _random_ip(scenario.topology.attacker_networks[0], rng)
-    t = time.time()
-    end_t = t + scenario.duration_seconds
-
-    while t < end_t:
-        direction = config.classify_direction(src_ip, dst_ip, scenario.topology.internal_networks)
-        yield FlowEvent(
-            timestamp=t,
-            src_ip=src_ip,
-            src_port=rng.randint(1024, 65535),
-            dst_ip=dst_ip,
-            dst_port=443,
-            protocol="TCP",
-            length=rng.randint(80, 150),   # Small beacon packet
-            tcp_flags={"SYN": False, "ACK": True, "FIN": False, "RST": False},
-            direction=Direction(direction),
-            ingest_source="simulator",
-        )
-        jitter = rng.gauss(0, interval_seconds * jitter_pct)
-        t += interval_seconds + jitter
-
-
-def generate_exfil(
-    scenario: SimulatorScenario,
-    config: EnclaveConfig,
-    chunk_bytes: int = 50_000,
-) -> Iterator[FlowEvent]:
-    """
-    Generate data exfiltration flows.
-
-    Produces large outbound TCP flows with high egress/ingress byte ratio.
-    Expected direction: OUTBOUND.
-    Expected detection signals: R_byte > exfil_byte_ratio_threshold, large cumulative bytes.
-    """
-    rng = random.Random(scenario.rng_seed)
-    src_ip = _random_ip(scenario.topology.internal_networks[0], rng)
-    dst_ip = _random_ip(scenario.topology.attacker_networks[0], rng)
-    t = time.time()
+    # Known Cobalt Strike Malleable C2 JA3 hash from abuse.ch SSLBL
+    cobalt_ja3 = "a0e9f5d64349fb13191bc781f81f42e1"
+    t = base_time
     end_t = t + scenario.duration_seconds
     interval = 1.0 / scenario.flow_rate_hz
 
     while t < end_t:
         direction = config.classify_direction(src_ip, dst_ip, scenario.topology.internal_networks)
         yield FlowEvent(
-            timestamp=t,
+            timestamp=round(t, 6),
             src_ip=src_ip,
             src_port=rng.randint(1024, 65535),
             dst_ip=dst_ip,
-            dst_port=rng.choice([443, 8443, 4444]),
-            protocol="TCP",
-            length=chunk_bytes + rng.randint(-1000, 1000),
+            dst_port=443,
+            protocol="TLS",
+            length=rng.randint(350, 520),
+            tls_ja3=cobalt_ja3,
+            tls_sni="c2-update-node.net",
+            tls_cert_self_signed=True,
             direction=Direction(direction),
             ingest_source="simulator",
         )
-        t += interval + rng.gauss(0, interval * 0.2)
+        t += interval + rng.uniform(0, interval * 0.1)
 
 
 def generate_port_scan(
     scenario: SimulatorScenario,
     config: EnclaveConfig,
+    base_time: float = 1700000000.0,
 ) -> Iterator[FlowEvent]:
     """
-    Generate port scan flows (SYN to many ports on target IPs).
-
-    Expected detection signals: high dst_port_count per src, high SYN ratio, low SYN-ACK rate.
+    Generate port scan flows.
+    Expected direction: INBOUND.
     """
     rng = random.Random(scenario.rng_seed)
     scanner_ip = _random_ip(scenario.topology.attacker_networks[0], rng)
-    t = time.time()
+    t = base_time
     end_t = t + scenario.duration_seconds
     interval = 1.0 / scenario.flow_rate_hz
-    port_cycle = list(range(1, 1025))  # Scan first 1024 ports
+    port_cycle = list(range(1, 1025))
 
     for port in port_cycle:
         if t >= end_t:
@@ -340,7 +369,7 @@ def generate_port_scan(
             scanner_ip, target_ip, scenario.topology.internal_networks
         )
         yield FlowEvent(
-            timestamp=t,
+            timestamp=round(t, 6),
             src_ip=scanner_ip,
             src_port=rng.randint(40000, 65535),
             dst_ip=target_ip,
@@ -354,6 +383,192 @@ def generate_port_scan(
         t += interval
 
 
+def generate_exfil(
+    scenario: SimulatorScenario,
+    config: EnclaveConfig,
+    base_time: float = 1700000000.0,
+    chunk_bytes: int = 50_000,
+) -> Iterator[FlowEvent]:
+    """
+    Generate data exfiltration flows.
+    Expected direction: OUTBOUND.
+    """
+    rng = random.Random(scenario.rng_seed)
+    src_ip = _random_ip(scenario.topology.internal_networks[0], rng)
+    dst_ip = _random_ip(scenario.topology.attacker_networks[0], rng)
+    t = base_time
+    end_t = t + scenario.duration_seconds
+    interval = 1.0 / scenario.flow_rate_hz
+
+    while t < end_t:
+        direction = config.classify_direction(src_ip, dst_ip, scenario.topology.internal_networks)
+        yield FlowEvent(
+            timestamp=round(t, 6),
+            src_ip=src_ip,
+            src_port=rng.randint(1024, 65535),
+            dst_ip=dst_ip,
+            dst_port=rng.choice([443, 8443, 4444]),
+            protocol="TCP",
+            length=chunk_bytes + rng.randint(-1000, 1000),
+            direction=Direction(direction),
+            ingest_source="simulator",
+        )
+        t += interval + rng.uniform(0, interval * 0.2)
+
+
+def get_scenario_generator(
+    scenario: SimulatorScenario,
+    config: EnclaveConfig = DEFAULT_CONFIG,
+    base_time: float = 1700000000.0,
+) -> Iterator[FlowEvent]:
+    """Dispatch to the generator corresponding to scenario."""
+    if scenario.name == "ddos_syn_flood":
+        return generate_ddos_syn_flood(scenario, config, base_time)
+    elif scenario.name == "c2_beaconing":
+        return generate_beacon(scenario, config, base_time)
+    elif scenario.name == "dns_tunnel":
+        return generate_dns_tunnel(scenario, config, base_time)
+    elif scenario.name == "encrypted_malware_tls":
+        return generate_encrypted_malware_tls(scenario, config, base_time)
+    elif scenario.name == "port_scan":
+        return generate_port_scan(scenario, config, base_time)
+    elif scenario.name == "data_exfiltration":
+        return generate_exfil(scenario, config, base_time)
+    else:
+        raise ValueError(f"Unknown scenario: {scenario.name}")
+
+
+# ---------------------------------------------------------------------------
+# Deterministic Output Emission (Flow records & Raw PCAP files)
+# ---------------------------------------------------------------------------
+def emit_scenario_flows(
+    scenario: SimulatorScenario,
+    max_flows: int = 100,
+    config: EnclaveConfig = DEFAULT_CONFIG,
+    base_time: float = 1700000000.0,
+) -> list[FlowEvent]:
+    """
+    Emit normalized internal FlowEvent records deterministically.
+
+    Args:
+        scenario: The target SimulatorScenario.
+        max_flows: Maximum number of flow events to emit.
+        config: EnclaveConfig with subnet definitions.
+        base_time: Baseline timestamp.
+
+    Returns:
+        List of FlowEvent records.
+    """
+    gen = get_scenario_generator(scenario, config, base_time)
+    flows: list[FlowEvent] = []
+    for f in gen:
+        flows.append(f)
+        if len(flows) >= max_flows:
+            break
+    return flows
+
+
+def _ip_to_bytes(ip_str: str) -> bytes:
+    """Convert IPv4 string to 4-byte packed binary."""
+    return ipaddress.IPv4Address(ip_str).packed
+
+
+def emit_scenario_pcap(
+    scenario: SimulatorScenario,
+    output_path: Path,
+    max_packets: int = 100,
+    config: EnclaveConfig = DEFAULT_CONFIG,
+    base_time: float = 1700000000.0,
+) -> Path:
+    """
+    Emit real binary .pcap file with valid Ethernet, IP, and L4 headers.
+
+    Uses dpkt.pcap.Writer with fixed seed parameters to ensure deterministic
+    pcap files across runs.
+
+    Args:
+        scenario: The target SimulatorScenario.
+        output_path: Destination .pcap path.
+        max_packets: Number of packets to write.
+        config: EnclaveConfig instance.
+        base_time: Starting epoch timestamp.
+
+    Returns:
+        Path to the generated .pcap file.
+    """
+    flows = emit_scenario_flows(scenario, max_packets, config, base_time)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(output_path, "wb") as f:
+        writer = dpkt.pcap.Writer(f)
+        src_mac = b"\x00\x11\x22\x33\x44\x55"
+        dst_mac = b"\x66\x77\x88\x99\xaa\xbb"
+
+        for event in flows:
+            # Build L4 layer
+            if event.protocol in ("TCP", "TLS"):
+                tcp = dpkt.tcp.TCP(
+                    sport=event.src_port,
+                    dport=event.dst_port,
+                    seq=event.tcp_seq if event.tcp_seq is not None else 1000,
+                    ack=event.tcp_ack if event.tcp_ack is not None else 0,
+                    flags=dpkt.tcp.TH_SYN if (event.tcp_flags and event.tcp_flags.get("SYN")) else dpkt.tcp.TH_ACK,
+                    win=64240,
+                )
+                if event.protocol == "TLS" and event.tls_ja3:
+                    # Synthetic TLS handshake payload marker
+                    tcp.data = b"\x16\x03\x01\x00\xa0\x01\x00\x00\x9c\x03\x03" + b"\x00" * 32
+                elif event.length > 54:
+                    tcp.data = b"\x00" * min(event.length - 54, 1400)
+                l4_pkt = tcp
+                ip_proto = dpkt.ip.IP_PROTO_TCP
+            elif event.protocol == "DNS" or event.protocol == "UDP":
+                udp = dpkt.udp.UDP(
+                    sport=event.src_port,
+                    dport=event.dst_port,
+                )
+                if event.protocol == "DNS" and event.dns_query:
+                    # Minimal standard DNS query payload
+                    qname_bytes = b"".join(
+                        bytes([len(part)]) + part.encode("ascii")
+                        for part in event.dns_query.split(".")
+                    ) + b"\x00"
+                    # Header: ID=0x1234, Flags=0x0100 (standard query), QDCOUNT=1
+                    dns_payload = b"\x12\x34\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00" + qname_bytes + b"\x00\x10\x00\x01"
+                    udp.data = dns_payload
+                else:
+                    udp.data = b"\x00" * min(max(event.length - 42, 8), 1400)
+                udp.ulen = len(udp)
+                l4_pkt = udp
+                ip_proto = dpkt.ip.IP_PROTO_UDP
+            else:
+                # Default IP payload
+                l4_pkt = dpkt.tcp.TCP(sport=event.src_port, dport=event.dst_port)
+                ip_proto = dpkt.ip.IP_PROTO_TCP
+
+            # Build IPv4 layer
+            ip = dpkt.ip.IP(
+                src=_ip_to_bytes(event.src_ip),
+                dst=_ip_to_bytes(event.dst_ip),
+                p=ip_proto,
+                ttl=64,
+                data=l4_pkt,
+            )
+            ip.len = len(ip)
+
+            # Build Ethernet layer
+            eth = dpkt.ethernet.Ethernet(
+                src=src_mac,
+                dst=dst_mac,
+                type=dpkt.ethernet.ETH_TYPE_IP,
+                data=ip,
+            )
+
+            writer.writepkt(bytes(eth), ts=event.timestamp)
+
+    return output_path
+
+
 # ---------------------------------------------------------------------------
 # Direction correctness assertions (used in tests)
 # ---------------------------------------------------------------------------
@@ -364,15 +579,6 @@ def assert_direction_correctness(
 ) -> None:
     """
     Assert that ALL flows in a scenario have the expected direction label.
-
-    This function is used in tests/test_simulator.py to verify that per-scenario
-    topology overrides produce correct direction labels for DDoS (INBOUND),
-    exfil (OUTBOUND), and scan (INBOUND) scenarios.
-
-    Args:
-        flows: List of generated FlowEvent records.
-        expected_direction: The Direction enum value all flows should have.
-        scenario_name: Used in assertion error messages.
 
     Raises:
         AssertionError if any flow has an unexpected direction.

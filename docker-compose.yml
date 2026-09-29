@@ -10,18 +10,17 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend:/app/backend:ro          # source code (read-only in container)
-      - ./data:/app/data                   # persistent data: ledger, fixtures, signatures
-      - ./config:/app/config:ro            # enclave config files
+      - ./data/fixtures:/app/data/fixtures:ro # packet captures read-only
+      - ./data/ledger:/app/data/ledger       # persistent ledger output
+      - ./data/signatures:/app/data/signatures # persistent signature keys
+      - ./config:/app/config:ro              # enclave config files
     environment:
       - TRINETRA_ENV=development
       - TRINETRA_SENSOR_ID=NTRO-ENCLAVE-DEV-01
       - TRINETRA_OLLAMA_ENABLED=false
     networks:
       - enclave-net
-    # NOTE: No external port mappings for ingest — sensor is receive-only.
-    # Dashboard WebSocket is exposed only within enclave-net.
-    ports:
-      - "127.0.0.1:8765:8765"             # SOC dashboard WebSocket (localhost only)
+    # NOTE: Sensor is receive-only. Zero published ports. Dashboard communicates inside enclave-net.
 
   # SOC Dashboard frontend (Phase 3 — placeholder)
   trinetra-dashboard:
