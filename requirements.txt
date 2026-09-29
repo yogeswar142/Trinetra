@@ -8,3 +8,6 @@ dpkt>=1.9.8
 cryptography>=42.0.0
 websockets>=12.0
 pytest>=8.0.0
+rich>=13.7.0
+scapy>=2.5.0
+psutil>=5.9.0

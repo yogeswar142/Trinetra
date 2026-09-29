@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  # Trinetra sensor backend (Phase 0 scaffold — no live ingest yet)
+  # Trinetra sensor backend — passive ingest, detection, and forensic ledger
   trinetra-sensor:
     build:
       context: .
@@ -11,7 +11,7 @@ services:
     volumes:
       - ./backend:/app/backend:ro          # source code (read-only in container)
       - ./data/fixtures:/app/data/fixtures:ro # packet captures read-only
-      - ./data/ledger:/app/data/ledger       # persistent ledger output
+      - ./data/ledger:/app/data/ledger       # persistent ledger output (shared with dashboard)
       - ./data/signatures:/app/data/signatures # persistent signature keys
       - ./config:/app/config:ro              # enclave config files
     environment:
@@ -20,18 +20,55 @@ services:
       - TRINETRA_OLLAMA_ENABLED=false
     networks:
       - enclave-net
-    # NOTE: Sensor is receive-only. Zero published ports. Dashboard communicates inside enclave-net.
+    # NOTE: Sensor is receive-only. Zero published ports. No external routing via enclave-net (internal: true).
 
-  # SOC Dashboard frontend (Phase 3 — placeholder)
+  # SOC Dashboard — FastAPI backend + HTML frontend
+  # Sits on BOTH networks: reads ledger from enclave-net (internal),
+  # and serves the SOC browser UI via dashboard-net (external-facing).
   trinetra-dashboard:
-    image: node:20-alpine
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.sensor
     container_name: trinetra-dashboard
+    restart: unless-stopped
     working_dir: /app
     volumes:
-      - ./frontend:/app:ro
-    command: ["echo", "Dashboard placeholder — activate in Phase 3"]
+      - ./backend:/app/backend:ro
+      - ./frontend:/app/frontend:ro
+      - ./data/ledger:/app/data/ledger:ro  # read-only access to live ledger
+      - ./benchmarks:/app/benchmarks:ro
+    command: >
+      python -m trinetra.dashboard.api_server
+    environment:
+      - TRINETRA_DASHBOARD_HOST=0.0.0.0
+      - TRINETRA_DASHBOARD_PORT=8765
+      - TRINETRA_LEDGER_PATH=/app/data/ledger/audit_chain.jsonl
+      - PYTHONPATH=/app/backend
+    ports:
+      - "8765:8765"   # SOC dashboard — accessible from host browser via dashboard-net
     networks:
-      - enclave-net
+      - enclave-net    # reads live ledger from sensor (internal, air-gapped)
+      - dashboard-net  # serves SOC operators (external, host-reachable)
+    depends_on:
+      - trinetra-sensor
+
+  trinetra-nextjs:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.nextjs
+      args:
+        API_INTERNAL_URL: http://trinetra-dashboard:8765
+    container_name: trinetra-nextjs
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE=http://trinetra-dashboard:8765
+      - API_INTERNAL_URL=http://trinetra-dashboard:8765
+    networks:
+      - dashboard-net
+    depends_on:
+      - trinetra-dashboard
 
   # Optional: Local Ollama LLM for narration (disabled by default)
   # Activate by setting TRINETRA_OLLAMA_ENABLED=true and uncommenting below.
@@ -47,7 +84,10 @@ services:
 networks:
   enclave-net:
     driver: bridge
-    internal: true            # Enclave network is isolated — no external routing.
+    internal: true    # Air-gapped: sensor has zero external routing (SIH requirement)
+  dashboard-net:
+    driver: bridge
+    internal: false   # Dashboard network: SOC operators reach the UI from host
 
 volumes:
   ollama_models:

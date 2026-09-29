@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=70", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "trinetra"
-version = "0.0.1-phase0"
+version = "0.2.0"
 description = "Passive AI-based network threat detection for unidirectional IP traffic (SIH 2026 PS 26145)"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -19,14 +19,18 @@ dependencies = [
     "scikit-learn>=1.4.0",
     "dpkt>=1.9.8",
     "cryptography>=42.0.0",
-    "websockets>=12.0",
-    "python-netflow>=0.10.0",
     "orjson>=3.9.0",
     "structlog>=24.1.0",
     "tomli>=2.0.1",
+    "rich>=13.0.0",
+    "readchar>=4.0.0",
+    "prompt_toolkit>=3.0.0",
 ]
 
 [project.optional-dependencies]
+ingest = [
+    "websockets>=12.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
@@ -37,7 +41,6 @@ dev = [
 ]
 benchmark = [
     "polars>=0.20.0",
-    "rich>=13.0.0",
 ]
 
 [project.scripts]

@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+*.egg
 
 # Caches and test outputs
 .pytest_cache/
