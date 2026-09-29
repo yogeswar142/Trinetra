@@ -287,9 +287,6 @@ class FlowTable:
             if current_ts - record.last_time > self.idle_timeout:
                 keys_to_remove.append(key)
                 expired.append(record)
-            else:
-                # Since OrderedDict maintains LRU order, we can break early if we encounter an active flow
-                break
 
         for k in keys_to_remove:
             del self.flows[k]
