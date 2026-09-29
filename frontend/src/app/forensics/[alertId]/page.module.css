@@ -1,0 +1,155 @@
+.backLink {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+.backLink:hover {
+  background: var(--bg-2);
+  color: var(--text-primary);
+  border-color: var(--border-bright);
+}
+
+.titleBar { display: flex; flex-direction: column; gap: 8px; }
+.badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.h1 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.metaLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 12px;
+}
+.leftCol, .rightCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.badge {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.metaGrid { display: flex; flex-direction: column; gap: 10px; }
+.metaRow { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.metaLabel { font-size: 12px; color: var(--text-dim); flex-shrink: 0; }
+.metaValue { font-size: 13px; color: var(--text-primary); text-align: right; }
+.mono { font-family: var(--font-mono); font-size: 12px; color: var(--blue); word-break: break-all; }
+
+.evidenceList { display: flex; flex-direction: column; gap: 8px; }
+.evidenceItem {
+  background: var(--bg-0);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+}
+.evidenceItem:hover { border-color: var(--border-bright); }
+.featureName {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--blue);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.interpretation { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 8px; }
+.evidenceVals { display: flex; gap: 12px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+.evidenceVals strong { color: var(--text-primary); }
+.sourceTag {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bg-2);
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.narration {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  background: var(--bg-0);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.mitreCard {
+  background: var(--bg-0);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mitreTag { margin-bottom: 4px; }
+.mitreName { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.mitreTactic { font-size: 12px; color: var(--text-secondary); }
+
+.endpointGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.epCard {
+  background: var(--bg-0);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+}
+.epLabel { font-size: 12px; font-weight: 500; color: var(--text-dim); margin-bottom: 4px; }
+.epIp { font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); font-weight: 600; }
+.epPort { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
+.epInternal { font-size: 11px; font-weight: 500; margin-top: 4px; color: var(--text-dim); }
+
+.backBtn {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.backBtn:hover { background: var(--bg-3); border-color: var(--border-bright); color: var(--text-primary); }
+
+@media (max-width: 1000px) {
+  .grid { grid-template-columns: 1fr; }
+}

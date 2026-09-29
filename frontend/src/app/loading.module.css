@@ -1,0 +1,70 @@
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.shell { display: flex; flex-direction: column; min-height: 100dvh; }
+.header {
+  height: 58px;
+  background: rgba(5,10,20,0.96);
+  border-bottom: 1px solid var(--border);
+}
+.body { display: flex; flex: 1; }
+.sidenav { width: 52px; border-right: 1px solid var(--border); }
+.main {
+  flex: 1;
+  padding: 20px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 14px;
+}
+
+.skeletonSidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bottomRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+.skeletonCard {
+  height: 100px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(90deg,
+    rgba(14,165,233,0.04) 0%,
+    rgba(14,165,233,0.09) 50%,
+    rgba(14,165,233,0.04) 100%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite;
+  border: 1px solid var(--border);
+}
+
+.skeletonFeed {
+  height: 480px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(90deg,
+    rgba(14,165,233,0.04) 0%,
+    rgba(14,165,233,0.09) 50%,
+    rgba(14,165,233,0.04) 100%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite;
+  border: 1px solid var(--border);
+}

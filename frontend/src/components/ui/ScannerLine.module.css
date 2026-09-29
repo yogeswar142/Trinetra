@@ -1,0 +1,12 @@
+.line {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-intel), transparent);
+  animation: scanner-sweep 5s linear infinite;
+  opacity: 0.25;
+  pointer-events: none;
+  z-index: var(--z-scanner);
+}

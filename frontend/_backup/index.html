@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trinetra SOC Dashboard — NTRO Enclave</title>
+  <meta name="description" content="Trinetra AI-based cyber threat detection dashboard for NTRO enclave sensor. Real-time alerts, forensic ledger, and threat analytics." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-primary: #060b18;
+      --bg-secondary: #0c1428;
+      --bg-card: rgba(12, 24, 48, 0.85);
+      --bg-card-hover: rgba(16, 32, 64, 0.9);
+      --border: rgba(0, 255, 200, 0.12);
+      --border-bright: rgba(0, 255, 200, 0.35);
+      --accent-cyan: #00ffc8;
+      --accent-cyan-dim: rgba(0, 255, 200, 0.6);
+      --accent-red: #ff3b6b;
+      --accent-orange: #ff8c42;
+      --accent-yellow: #ffd166;
+      --accent-green: #06d6a0;
+      --accent-blue: #4cc9f0;
+      --text-primary: #e2eaf8;
+      --text-secondary: #7a8fad;
+      --text-mono: 'JetBrains Mono', monospace;
+      --text-sans: 'Inter', sans-serif;
+      --glow-cyan: 0 0 20px rgba(0, 255, 200, 0.4);
+      --glow-red: 0 0 20px rgba(255, 59, 107, 0.4);
+      --glow-orange: 0 0 20px rgba(255, 140, 66, 0.3);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--text-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 255, 200, 0.06), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(76, 201, 240, 0.04), transparent);
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(6, 11, 24, 0.95);
+      backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; flex-direction: column; gap: 4px; }
+
+    .logo {
+      font-family: var(--text-sans);
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: var(--accent-cyan);
+      text-shadow: var(--glow-cyan), 0 0 60px rgba(0, 255, 200, 0.2);
+    }
+
+    .logo span { color: rgba(0, 255, 200, 0.5); }
+
+    .subtitle {
+      font-family: var(--text-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .header-right { display: flex; align-items: center; gap: 24px; }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border: 1px solid rgba(6, 214, 160, 0.3);
+      border-radius: 20px;
+      background: rgba(6, 214, 160, 0.08);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+
+    .header-time {
+      font-family: var(--text-mono);
+      font-size: 13px;
+      color: var(--accent-cyan);
+      opacity: 0.8;
+    }
+
+    .enclave-badge {
+      font-family: var(--text-mono);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    /* ─── MAIN LAYOUT ─── */
+    main {
+      padding: 24px 32px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 20px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* ─── TOP METRICS ROW ─── */
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s, transform 0.2s;
+      backdrop-filter: blur(10px);
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+      opacity: 0.6;
+    }
+
+    .metric-card:hover {
+      border-color: var(--border-bright);
+      transform: translateY(-2px);
+    }
+
+    .metric-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .metric-value {
+      font-family: var(--text-mono);
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+
+    .metric-value.cyan { color: var(--accent-cyan); text-shadow: var(--glow-cyan); }
+    .metric-value.red { color: var(--accent-red); text-shadow: var(--glow-red); }
+    .metric-value.orange { color: var(--accent-orange); }
+    .metric-value.green { color: var(--accent-green); }
+
+    .metric-sub {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      font-family: var(--text-mono);
+    }
+
+    .metric-trend {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 40px;
+      opacity: 0.4;
+    }
+
+    /* ─── CONTENT GRID ─── */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      min-height: 480px;
+    }
+
+    /* ─── CARDS ─── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-title::before {
+      content: '';
+      width: 3px; height: 16px;
+      background: var(--accent-cyan);
+      border-radius: 2px;
+      box-shadow: var(--glow-cyan);
+    }
+
+    .card-badge {
+      font-family: var(--text-mono);
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--accent-green);
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    /* ─── ALERT TABLE ─── */
+    .alert-table-wrap {
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      padding: 10px 16px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.2);
+      position: sticky; top: 0;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(0, 255, 200, 0.05);
+      transition: background 0.2s;
+    }
+
+    tbody tr:hover { background: rgba(0, 255, 200, 0.04); }
+
+    tbody tr.new-alert {
+      animation: alertFlash 1s ease-out;
+    }
+
+    @keyframes alertFlash {
+      0% { background: rgba(255, 59, 107, 0.15); }
+      100% { background: transparent; }
+    }
+
+    td {
+      padding: 11px 16px;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    .threat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-family: var(--text-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .badge-ddos     { background: rgba(255,59,107,0.15); color: #ff3b6b; border: 1px solid rgba(255,59,107,0.3); }
+    .badge-beacon   { background: rgba(255,140,66,0.15); color: #ff8c42; border: 1px solid rgba(255,140,66,0.3); }
+    .badge-dga      { background: rgba(255,209,102,0.15); color: #ffd166; border: 1px solid rgba(255,209,102,0.3); }
+    .badge-dns      { background: rgba(255,209,102,0.15); color: #ffd166; border: 1px solid rgba(255,209,102,0.3); }
+    .badge-scan     { background: rgba(76,201,240,0.15); color: #4cc9f0; border: 1px solid rgba(76,201,240,0.3); }
+    .badge-exfil    { background: rgba(180,0,255,0.15); color: #c77dff; border: 1px solid rgba(180,0,255,0.3); }
+    .badge-tls      { background: rgba(0,200,150,0.15); color: #00ffc8; border: 1px solid rgba(0,255,200,0.3); }
+
+    .severity-badge {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .sev-critical { background: rgba(255,59,107,0.2); color: #ff3b6b; }
+    .sev-high     { background: rgba(255,140,66,0.2); color: #ff8c42; }
+    .sev-medium   { background: rgba(255,209,102,0.2); color: #ffd166; }
+    .sev-low      { background: rgba(6,214,160,0.2); color: #06d6a0; }
+
+    .confidence-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .confidence-bar-track {
+      width: 60px;
+      height: 4px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .confidence-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.5s ease;
+    }
+
+    .fill-high { background: linear-gradient(90deg, #06d6a0, #00ffc8); }
+    .fill-med  { background: linear-gradient(90deg, #ffd166, #ff8c42); }
+    .fill-low  { background: linear-gradient(90deg, #ff3b6b, #ff8c42); }
+
+    .confidence-pct {
+      font-family: var(--text-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      min-width: 36px;
+    }
+
+    .ip-flow {
+      font-family: var(--text-mono);
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .ip-src { color: var(--accent-red); opacity: 0.9; }
+    .ip-arrow { color: var(--text-secondary); }
+    .ip-dst { color: var(--accent-cyan); opacity: 0.9; }
+
+    .ts {
+      font-family: var(--text-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      opacity: 0.7;
+    }
+
+    .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .empty-state .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+
+    /* ─── RIGHT PANEL ─── */
+    .right-panel { display: flex; flex-direction: column; gap: 16px; }
+
+    /* ─── DONUT CHART ─── */
+    .chart-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      gap: 16px;
+    }
+
+    .donut-container {
+      position: relative;
+      width: 180px;
+      height: 180px;
+    }
+
+    .donut-label {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .donut-label-value {
+      font-family: var(--text-mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: block;
+    }
+
+    .donut-label-text {
+      font-size: 10px;
+      color: var(--text-secondary);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .legend { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 0 8px; }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .legend-left { display: flex; align-items: center; gap: 8px; }
+
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .legend-name { font-size: 12px; color: var(--text-secondary); }
+
+    .legend-bar-wrap {
+      flex: 1;
+      height: 4px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .legend-bar { height: 100%; border-radius: 2px; }
+
+    .legend-count {
+      font-family: var(--text-mono);
+      font-size: 12px;
+      color: var(--text-primary);
+      font-weight: 700;
+      min-width: 28px;
+      text-align: right;
+    }
+
+    /* ─── LEDGER CARD ─── */
+    .ledger-info { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+
+    .ledger-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .ledger-key {
+      font-size: 10px;
+      color: var(--text-secondary);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .ledger-val {
+      font-family: var(--text-mono);
+      font-size: 13px;
+      color: var(--accent-cyan);
+      word-break: break-all;
+      line-height: 1.4;
+    }
+
+    .ledger-val.normal { color: var(--text-primary); }
+
+    .ledger-divider {
+      height: 1px;
+      background: var(--border);
+    }
+
+    .verify-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--border-bright);
+      border-radius: 8px;
+      background: rgba(0, 255, 200, 0.06);
+      color: var(--accent-cyan);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .verify-btn:hover {
+      background: rgba(0, 255, 200, 0.12);
+      box-shadow: var(--glow-cyan);
+    }
+
+    /* ─── BOTTOM ROW ─── */
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    .evidence-panel { padding: 16px 18px; flex: 1; overflow-y: auto; }
+
+    .evidence-item {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      background: rgba(0,0,0,0.2);
+      transition: border-color 0.2s;
+    }
+
+    .evidence-item:hover { border-color: var(--border-bright); }
+
+    .evidence-feature {
+      font-family: var(--text-mono);
+      font-size: 11px;
+      color: var(--accent-cyan);
+      margin-bottom: 4px;
+      font-weight: 700;
+    }
+
+    .evidence-interp { color: var(--text-secondary); line-height: 1.4; }
+
+    .evidence-vals {
+      display: flex;
+      gap: 12px;
+      margin-top: 6px;
+      font-family: var(--text-mono);
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+
+    .evidence-val-item span { color: var(--text-primary); }
+
+    /* ─── SCROLLBAR ─── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,255,200,0.2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,255,200,0.4); }
+
+    /* ─── SCANNER LINE ─── */
+    .scanner {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, var(--accent-cyan) 50%, transparent 100%);
+      animation: scan 4s linear infinite;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    @keyframes scan {
+      0% { top: 0%; }
+      100% { top: 100%; }
+    }
+
+    /* ─── CONNECTION STATUS ─── */
+    .conn-status {
+      position: fixed;
+      bottom: 20px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-family: var(--text-mono);
+      backdrop-filter: blur(10px);
+    }
+
+    .no-data-overlay {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 60px;
+      color: var(--text-secondary);
+    }
+
+    .radar-icon {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      border: 2px solid rgba(0,255,200,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      animation: radarPulse 2s infinite;
+    }
+
+    @keyframes radarPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,200,0.3); }
+      50% { box-shadow: 0 0 0 20px rgba(0,255,200,0); }
+    }
+
+    .mitre-tag {
+      font-family: var(--text-mono);
+      font-size: 10px;
+      color: var(--text-secondary);
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+
+<div class="scanner"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <div class="logo">TRINE<span>TRA</span></div>
+    <div class="subtitle">NTRO Enclave Sensor Alpha-01 &nbsp;|&nbsp; PS 26145 &nbsp;|&nbsp; Air-Gap Mode</div>
+  </div>
+  <div class="header-right">
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      <span style="color:#06d6a0;font-size:11px;letter-spacing:1px;">LIVE</span>
+    </div>
+    <div class="enclave-badge">READ-ONLY INGEST</div>
+    <div class="header-time" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main>
+
+  <!-- METRICS ROW -->
+  <div class="metrics-row">
+    <div class="metric-card">
+      <div class="metric-label">Packets / Sec</div>
+      <div class="metric-value cyan" id="pps">0</div>
+      <div class="metric-sub" id="pps-sub">Awaiting feed...</div>
+      <canvas class="metric-trend" id="sparkline-pps"></canvas>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Active Alerts</div>
+      <div class="metric-value red" id="alert-count">0</div>
+      <div class="metric-sub" id="alert-sub">No threats detected</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Ledger Blocks</div>
+      <div class="metric-value orange" id="block-height">0</div>
+      <div class="metric-sub" id="block-sub">Hash chain intact</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Pipeline Status</div>
+      <div class="metric-value green" id="pipeline-status" style="font-size:18px;padding-top:6px;">NOMINAL</div>
+      <div class="metric-sub" id="pipeline-sub">All detectors armed</div>
+    </div>
+  </div>
+
+  <!-- CONTENT GRID -->
+  <div class="content-grid">
+
+    <!-- ALERT FEED -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Live Alert Feed</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="live-indicator">
+            <div class="status-dot" style="width:6px;height:6px;"></div>
+            STREAMING
+          </div>
+          <div class="card-badge" id="total-badge">0 alerts</div>
+        </div>
+      </div>
+      <div class="alert-table-wrap" id="alert-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Threat Class</th>
+              <th>Severity</th>
+              <th>Confidence</th>
+              <th>Source → Destination</th>
+              <th>MITRE</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="alert-tbody">
+            <tr><td colspan="6">
+              <div class="no-data-overlay">
+                <div class="radar-icon">📡</div>
+                <div style="font-size:14px;font-weight:600;">Sensor Armed — Awaiting Traffic</div>
+                <div style="font-size:12px;opacity:0.6;">Run the Trinetra pipeline to see live detections</div>
+              </div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+
+      <!-- THREAT BREAKDOWN -->
+      <div class="card" style="flex:1;">
+        <div class="card-header">
+          <div class="card-title">Threat Distribution</div>
+        </div>
+        <div class="chart-wrap">
+          <div class="donut-container">
+            <canvas id="donut-canvas" width="180" height="180"></canvas>
+            <div class="donut-label">
+              <span class="donut-label-value" id="donut-total">0</span>
+              <span class="donut-label-text">ALERTS</span>
+            </div>
+          </div>
+          <div class="legend" id="legend"></div>
+        </div>
+      </div>
+
+      <!-- FORENSIC LEDGER -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Forensic Ledger</div>
+          <div style="font-size:10px;color:var(--accent-cyan);font-family:var(--text-mono);">Ed25519 + SHA-256</div>
+        </div>
+        <div class="ledger-info">
+          <div class="ledger-row">
+            <div class="ledger-key">Block Height</div>
+            <div class="ledger-val normal" id="ledger-height">—</div>
+          </div>
+          <div class="ledger-divider"></div>
+          <div class="ledger-row">
+            <div class="ledger-key">Head Hash</div>
+            <div class="ledger-val" id="ledger-hash" style="font-size:11px;">—</div>
+          </div>
+          <div class="ledger-divider"></div>
+          <div class="ledger-row">
+            <div class="ledger-key">Last Commit</div>
+            <div class="ledger-val normal" style="font-size:12px;" id="ledger-ts">—</div>
+          </div>
+          <button class="verify-btn" id="verify-btn">⛓ Verify Chain</button>
+          <div id="verify-result" style="font-family:var(--text-mono);font-size:11px;text-align:center;display:none;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM ROW -->
+  <div class="bottom-row">
+
+    <!-- EVIDENCE PANEL -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Last Alert Evidence</div>
+      </div>
+      <div class="evidence-panel" id="evidence-panel">
+        <div style="color:var(--text-secondary);font-size:13px;padding:20px 0;text-align:center;">Select an alert to view evidence</div>
+      </div>
+    </div>
+
+    <!-- DETECTOR STATUS -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Detector Status</div>
+      </div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px;" id="detector-status">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <!-- SESSION STATS -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Session Stats</div>
+      </div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px;" id="session-stats">
+        <!-- filled by JS -->
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="conn-status">
+  <div class="status-dot" id="conn-dot" style="background:var(--accent-orange);box-shadow:0 0 8px var(--accent-orange);"></div>
+  <span id="conn-text">Connecting to sensor API...</span>
+</div>
+
+<script>
+// ─── CONFIG ───
+const API_BASE = window.location.origin;
+const POLL_INTERVAL = 2500;
+const MAX_TABLE_ROWS = 100;
+
+// ─── STATE ───
+let allAlerts = [];
+let threatCounts = {};
+let sessionStart = Date.now();
+let lastPps = 0;
+let ppsHistory = [];
+let connected = false;
+
+const THREAT_META = {
+  VOLUMETRIC_DDOS:        { label: 'T-a DDoS',    cls: 'badge-ddos',   color: '#ff3b6b' },
+  BOTNET_C2_BEACONING:    { label: 'T-b Beacon',  cls: 'badge-beacon', color: '#ff8c42' },
+  DGA_DOMAINS:            { label: 'T-c DGA',     cls: 'badge-dga',    color: '#ffd166' },
+  DNS_TUNNELLING:         { label: 'T-c DNS',     cls: 'badge-dns',    color: '#ffd166' },
+  PORT_SCANNING:          { label: 'T-e Scan',    cls: 'badge-scan',   color: '#4cc9f0' },
+  DATA_EXFILTRATION:      { label: 'T-f Exfil',   cls: 'badge-exfil',  color: '#c77dff' },
+  ENCRYPTED_MALWARE_TLS:  { label: 'T-d TLS',     cls: 'badge-tls',    color: '#00ffc8' },
+};
+
+const DETECTORS = [
+  { id: 'T-a', name: 'DDoS Detector',      key: 'VOLUMETRIC_DDOS' },
+  { id: 'T-b', name: 'Beacon Detector',    key: 'BOTNET_C2_BEACONING' },
+  { id: 'T-c', name: 'DGA Detector',       key: 'DGA_DOMAINS' },
+  { id: 'T-c', name: 'DNS Tunnel',         key: 'DNS_TUNNELLING' },
+  { id: 'T-d', name: 'TLS Malware',        key: 'ENCRYPTED_MALWARE_TLS' },
+  { id: 'T-e', name: 'Port Scan Detector', key: 'PORT_SCANNING' },
+  { id: 'T-f', name: 'Exfil Detector',     key: 'DATA_EXFILTRATION' },
+];
+
+// ─── CLOCK ───
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toUTCString().slice(17, 25) + ' UTC';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── SPARKLINE ───
+function drawSparkline(canvasId, data, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  if (data.length < 2) return;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (data.length - 1)) * W;
+    const y = H - ((v - min) / range) * H * 0.8 - H * 0.1;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // fill
+  ctx.lineTo(W, H); ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fillStyle = color.replace(')', ', 0.1)').replace('rgb', 'rgba').replace('#', 'rgba(').replace(/^rgba\(([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/, (m,r,g,b) => `rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)}`);
+  ctx.fillStyle = color + '18';
+  ctx.fill();
+}
+
+// ─── DONUT CHART ───
+function drawDonut(counts) {
+  const canvas = document.getElementById('donut-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2, r = 70, inner = 48;
+  ctx.clearRect(0, 0, W, H);
+
+  const entries = Object.entries(counts).filter(([,v]) => v > 0);
+  const total = entries.reduce((s, [,v]) => s + v, 0);
+
+  if (total === 0) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = r - inner;
+    ctx.stroke();
+    return;
+  }
+
+  let angle = -Math.PI / 2;
+  entries.forEach(([key, val]) => {
+    const slice = (val / total) * Math.PI * 2;
+    const color = (THREAT_META[key] || {color:'#888'}).color;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, angle, angle + slice);
+    ctx.arc(cx, cy, inner, angle + slice, angle, true);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    angle += slice;
+  });
+
+  document.getElementById('donut-total').textContent = total;
+}
+
+function renderLegend(counts) {
+  const total = Object.values(counts).reduce((s, v) => s + v, 0) || 1;
+  const legend = document.getElementById('legend');
+  const entries = Object.entries(counts).sort(([,a],[,b]) => b - a);
+  legend.innerHTML = entries.map(([key, val]) => {
+    const meta = THREAT_META[key] || { label: key, color: '#888' };
+    const pct = Math.round((val / total) * 100);
+    return `
+      <div class="legend-item">
+        <div class="legend-left">
+          <div class="legend-dot" style="background:${meta.color};box-shadow:0 0 6px ${meta.color}88;"></div>
+          <div class="legend-name">${meta.label}</div>
+        </div>
+        <div class="legend-bar-wrap">
+          <div class="legend-bar" style="width:${pct}%;background:${meta.color};"></div>
+        </div>
+        <div class="legend-count">${val}</div>
+      </div>`;
+  }).join('');
+}
+
+// ─── ALERT TABLE ───
+function renderAlerts(alerts) {
+  const tbody = document.getElementById('alert-tbody');
+  if (alerts.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6">
+      <div class="no-data-overlay">
+        <div class="radar-icon">📡</div>
+        <div style="font-size:14px;font-weight:600;">Sensor Armed — Awaiting Traffic</div>
+        <div style="font-size:12px;opacity:0.6;">Run the Trinetra pipeline to see live detections</div>
+      </div>
+    </td></tr>`;
+    return;
+  }
+
+  const recent = alerts.slice(-MAX_TABLE_ROWS).reverse();
+  tbody.innerHTML = recent.map((a, i) => {
+    const meta = THREAT_META[a.threat_class] || { label: a.threat_class, cls: 'badge-scan', color: '#888' };
+    const conf = Math.round((a.confidence || 0) * 100);
+    const fillCls = conf >= 80 ? 'fill-high' : conf >= 60 ? 'fill-med' : 'fill-low';
+    const sevCls = 'sev-' + (a.severity || 'low').toLowerCase();
+    const src = a.source ? `${a.source.ip}` : '—';
+    const dst = a.destination ? `${a.destination.ip}` : '—';
+    const ts = a.timestamp ? a.timestamp.slice(11, 19) : '—';
+    const mitre = a.mitre_attack ? a.mitre_attack.technique_id : '—';
+    const isNew = i === 0 ? 'new-alert' : '';
+    return `
+      <tr class="${isNew}" onclick="showEvidence(${JSON.stringify(JSON.stringify(a)).slice(1,-1)})" style="cursor:pointer;">
+        <td><span class="threat-badge ${meta.cls}">${meta.label}</span></td>
+        <td><span class="severity-badge ${sevCls}">${(a.severity||'?').toUpperCase()}</span></td>
+        <td>
+          <div class="confidence-bar">
+            <div class="confidence-bar-track">
+              <div class="confidence-bar-fill ${fillCls}" style="width:${conf}%"></div>
+            </div>
+            <span class="confidence-pct">${conf}%</span>
+          </div>
+        </td>
+        <td>
+          <div class="ip-flow">
+            <span class="ip-src">${src}</span>
+            <span class="ip-arrow">→</span>
+            <span class="ip-dst">${dst}</span>
+          </div>
+        </td>
+        <td><span class="mitre-tag">${mitre}</span></td>
+        <td><span class="ts">${ts}</span></td>
+      </tr>`;
+  }).join('');
+}
+
+// ─── EVIDENCE ───
+function showEvidence(rawJson) {
+  try {
+    const a = JSON.parse(rawJson);
+    const panel = document.getElementById('evidence-panel');
+    if (!a.evidence || a.evidence.length === 0) {
+      panel.innerHTML = '<div style="color:var(--text-secondary);padding:20px;text-align:center;">No evidence items</div>';
+      return;
+    }
+    panel.innerHTML = a.evidence.map(e => `
+      <div class="evidence-item">
+        <div class="evidence-feature">${e.feature}</div>
+        <div class="evidence-interp">${e.interpretation || '—'}</div>
+        <div class="evidence-vals">
+          <div class="evidence-val-item">Value: <span>${typeof e.value === 'number' ? e.value.toFixed(3) : e.value}</span></div>
+          <div class="evidence-val-item">Threshold: <span>${e.threshold}</span></div>
+          <div class="evidence-val-item">Source: <span>${e.source}</span></div>
+        </div>
+      </div>`).join('');
+  } catch(err) { /* ignore */ }
+}
+
+// ─── DETECTOR STATUS ───
+function renderDetectorStatus(counts) {
+  const el = document.getElementById('detector-status');
+  el.innerHTML = DETECTORS.map(d => {
+    const cnt = counts[d.key] || 0;
+    const active = cnt > 0;
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:8px;height:8px;border-radius:50%;background:${active?'var(--accent-green)':'var(--accent-cyan)'};box-shadow:0 0 6px ${active?'var(--accent-green)':'var(--accent-cyan)'};opacity:${active?1:0.4};"></div>
+          <span style="font-size:12px;color:var(--text-secondary);">${d.name}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-family:var(--text-mono);font-size:11px;color:var(--text-secondary);">${d.id}</span>
+          ${cnt > 0 ? `<span style="font-family:var(--text-mono);font-size:11px;color:var(--accent-red);font-weight:700;">${cnt}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ─── SESSION STATS ───
+function renderSessionStats(stats) {
+  const el = document.getElementById('session-stats');
+  const uptime = Math.floor((Date.now() - sessionStart) / 1000);
+  const hh = String(Math.floor(uptime/3600)).padStart(2,'0');
+  const mm = String(Math.floor((uptime%3600)/60)).padStart(2,'0');
+  const ss = String(uptime%60).padStart(2,'0');
+  const rows = [
+    ['Uptime', `${hh}:${mm}:${ss}`],
+    ['Total Alerts', stats.total_alerts || 0],
+    ['Packets Processed', (stats.packets_processed || 0).toLocaleString()],
+    ['Throughput', stats.throughput_mbps ? `${stats.throughput_mbps} Mbps` : '—'],
+    ['Model Version', 'trinetra-v2c'],
+    ['Ingest Mode', 'PCAP / NetFlow'],
+  ];
+  el.innerHTML = rows.map(([k, v]) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(0,255,200,0.05);">
+      <span style="font-size:11px;color:var(--text-secondary);letter-spacing:0.5px;">${k}</span>
+      <span style="font-family:var(--text-mono);font-size:12px;color:var(--text-primary);">${v}</span>
+    </div>`).join('');
+}
+
+// ─── API POLL ───
+async function fetchData() {
+  try {
+    const resp = await fetch(`${API_BASE}/api/alerts`);
+    if (!resp.ok) throw new Error('API error');
+    const data = await resp.json();
+
+    connected = true;
+    document.getElementById('conn-dot').style.background = 'var(--accent-green)';
+    document.getElementById('conn-dot').style.boxShadow = '0 0 8px var(--accent-green)';
+    document.getElementById('conn-text').textContent = 'Connected to sensor API';
+
+    allAlerts = data.alerts || [];
+    threatCounts = data.threat_counts || {};
+
+    // Metrics
+    const pps = data.stats?.packets_per_second || 0;
+    ppsHistory.push(pps);
+    if (ppsHistory.length > 30) ppsHistory.shift();
+
+    document.getElementById('pps').textContent = pps.toLocaleString();
+    document.getElementById('pps-sub').textContent = `${data.stats?.throughput_mbps || 0} Mbps`;
+    document.getElementById('alert-count').textContent = allAlerts.length;
+    document.getElementById('alert-sub').textContent =
+      allAlerts.length > 0 ? `${Object.keys(threatCounts).length} threat classes active` : 'No threats detected';
+    document.getElementById('block-height').textContent = data.ledger?.block_height ?? '—';
+    document.getElementById('total-badge').textContent = `${allAlerts.length} alerts`;
+
+    // Ledger
+    if (data.ledger) {
+      document.getElementById('ledger-height').textContent = data.ledger.block_height ?? '—';
+      document.getElementById('ledger-hash').textContent =
+        (data.ledger.head_hash || '—').slice(0, 32) + (data.ledger.head_hash?.length > 32 ? '…' : '');
+      document.getElementById('ledger-ts').textContent = data.ledger.last_commit || '—';
+      document.getElementById('block-sub').textContent = data.ledger.chain_ok ? '✓ Chain verified' : '⚠ Verify required';
+    }
+
+    renderAlerts(allAlerts);
+    drawDonut(threatCounts);
+    renderLegend(threatCounts);
+    renderDetectorStatus(threatCounts);
+    renderSessionStats(data.stats || {});
+    drawSparkline('sparkline-pps', ppsHistory, '#00ffc8');
+
+  } catch (e) {
+    connected = false;
+    document.getElementById('conn-dot').style.background = 'var(--accent-orange)';
+    document.getElementById('conn-dot').style.boxShadow = '0 0 8px var(--accent-orange)';
+    document.getElementById('conn-text').textContent = 'API offline — showing cached data';
+    // Still render with any cached data
+    renderAlerts(allAlerts);
+    drawDonut(threatCounts);
+    renderLegend(threatCounts);
+    renderDetectorStatus(threatCounts);
+  }
+}
+
+// ─── VERIFY CHAIN ───
+document.getElementById('verify-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('verify-btn');
+  const res = document.getElementById('verify-result');
+  btn.textContent = '⏳ Verifying...';
+  btn.disabled = true;
+  res.style.display = 'none';
+  try {
+    const r = await fetch(`${API_BASE}/api/verify`);
+    const d = await r.json();
+    res.style.display = 'block';
+    if (d.ok) {
+      res.style.color = 'var(--accent-green)';
+      res.textContent = `✓ ${d.blocks_verified} blocks verified (${d.verify_time_ms?.toFixed(1)}ms)`;
+    } else {
+      res.style.color = 'var(--accent-red)';
+      res.textContent = `✗ ${d.errors?.length} error(s) found`;
+    }
+  } catch(e) {
+    res.style.display = 'block';
+    res.style.color = 'var(--accent-orange)';
+    res.textContent = 'API unavailable';
+  }
+  btn.textContent = '⛓ Verify Chain';
+  btn.disabled = false;
+});
+
+// ─── INIT ───
+fetchData();
+setInterval(fetchData, POLL_INTERVAL);
+setInterval(renderSessionStats.bind(null, {}), 1000);
+</script>
+</body>
+</html>

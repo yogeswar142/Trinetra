@@ -1,0 +1,111 @@
+/* Trinetra SOC — Geist Dark Ops (production materials) */
+
+:root {
+  --bg-0: #000000;
+  --bg-1: #0a0a0a;
+  --bg-2: #111111;
+  --bg-3: #1a1a1a;
+  --bg-hover: #1f1f1f;
+
+  --border: #333333;
+  --border-bright: #444444;
+  --border-hover: #444444;
+  --border-card: #2e2e2e;
+
+  --text-primary: #ededed;
+  --text-secondary: #a1a1a1;
+  --text-dim: #666666;
+
+  --blue: #0070f3;
+  --blue-hover: #3291ff;
+  --red: #ee0000;
+  --amber: #f5a623;
+  --green: #0c8c4a;
+
+  --accent-intel: var(--blue);
+  --accent-ember: var(--blue);
+  --accent-alert: var(--red);
+  --accent-warn: var(--amber);
+  --accent-flag: #c9a227;
+  --accent-ok: var(--green);
+  --accent-exfil: #8b5cf6;
+  --accent-scan: var(--text-secondary);
+  --accent-tls: #00acb5;
+
+  --glow-intel: none;
+  --glow-ember: none;
+  --glow-alert: none;
+  --glow-ok: none;
+  --glow-warn: none;
+  --glow-exfil: none;
+
+  --font-sans: var(--font-geist-sans), 'Geist', system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), 'Geist Mono', ui-monospace, monospace;
+
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+
+  --card-bg: var(--bg-2);
+  --card-bg-hover: var(--bg-3);
+  --card-shadow: none;
+
+  --z-header: 100;
+  --z-drawer: 200;
+  --z-scanner: 999;
+
+  --page-gap: 16px;
+  --page-pad: 24px 24px 32px;
+  --sidebar-w: 240px;
+  --header-h: 48px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-0);
+  color: var(--text-primary);
+  min-height: 100dvh;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 8px; border: 2px solid var(--bg-0); }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+::selection { background: rgba(0, 112, 243, 0.35); color: #fff; }
+
+a { color: var(--blue); text-decoration: none; }
+a:hover { color: var(--blue-hover); }
+
+button, input { font: inherit; }
+
+.mono { font-family: var(--font-mono) !important; }
+
+/* Shared surface */
+.panel {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}

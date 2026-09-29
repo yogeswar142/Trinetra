@@ -1,0 +1,12 @@
+.tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  text-decoration: none;
+  padding: 1px 0;
+  border-bottom: 1px dashed rgba(100,116,139,0.4);
+  transition: color 0.2s, opacity 0.2s;
+}
+.tag:hover { color: var(--accent-intel); opacity: 1; }
+.dash { color: var(--text-dim); font-family: var(--font-mono); font-size: 12px; }
