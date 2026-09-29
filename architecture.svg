@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="100%" height="100%">
+  <defs>
+    <!-- Gradient for Trinetra Sensor -->
+    <linearGradient id="sensorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    
+    <!-- Gradient for Threat Engine -->
+    <linearGradient id="engineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b91c1c" />
+      <stop offset="100%" stop-color="#7f1d1d" />
+    </linearGradient>
+
+    <!-- Gradient for Immutable Ledger -->
+    <linearGradient id="ledgerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#064e3b" />
+    </linearGradient>
+
+    <!-- Gradient for SOC Dashboard -->
+    <linearGradient id="dashboardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0369a1" />
+      <stop offset="100%" stop-color="#0c4a6e" />
+    </linearGradient>
+    
+    <!-- Arrow marker -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b" />
+    </marker>
+
+    <!-- Drop shadow -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="400" fill="#f8fafc" rx="12"/>
+
+  <!-- Connections / Arrows -->
+  <path d="M 170 200 L 250 200" stroke="#64748b" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 430 200 L 510 200" stroke="#64748b" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 590 280 L 590 310 L 180 310 L 180 200" stroke="#64748b" stroke-width="3" fill="none" stroke-dasharray="5,5"/>
+  <text x="360" y="300" font-family="sans-serif" font-size="12" fill="#64748b" font-weight="bold">Air-gapped Feedback Loop</text>
+  
+  <path d="M 670 200 L 740 200" stroke="#64748b" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Box 1: Passive Tap -->
+  <g transform="translate(30, 160)" filter="url(#shadow)">
+    <rect width="140" height="80" rx="8" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/>
+    <text x="70" y="45" font-family="sans-serif" font-size="14" font-weight="bold" fill="#334155" text-anchor="middle">Network Tap</text>
+    <text x="70" y="65" font-family="sans-serif" font-size="12" fill="#64748b" text-anchor="middle">(Passive Copy)</text>
+  </g>
+
+  <!-- Box 2: Trinetra Sensor -->
+  <g transform="translate(250, 140)" filter="url(#shadow)">
+    <rect width="180" height="120" rx="12" fill="url(#sensorGrad)"/>
+    <text x="90" y="40" font-family="sans-serif" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle">Trinetra Sensor</text>
+    
+    <!-- Sub-box: ML Engine -->
+    <rect x="20" y="60" width="140" height="40" rx="6" fill="url(#engineGrad)"/>
+    <text x="90" y="85" font-family="sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="middle">AI Threat Engine</text>
+  </g>
+
+  <!-- Box 3: Immutable Ledger -->
+  <g transform="translate(510, 140)" filter="url(#shadow)">
+    <rect width="160" height="120" rx="12" fill="url(#ledgerGrad)"/>
+    <text x="80" y="45" font-family="sans-serif" font-size="15" font-weight="bold" fill="#ffffff" text-anchor="middle">Immutable</text>
+    <text x="80" y="65" font-family="sans-serif" font-size="15" font-weight="bold" fill="#ffffff" text-anchor="middle">Ledger</text>
+    <text x="80" y="95" font-family="sans-serif" font-size="11" fill="#a7f3d0" text-anchor="middle">Ed25519 Cryptography</text>
+  </g>
+
+  <!-- Box 4: SOC Dashboard -->
+  <g transform="translate(740, 160)" filter="url(#shadow)">
+    <rect width="40" height="80" rx="4" fill="url(#dashboardGrad)"/>
+  </g>
+  <text x="770" y="195" font-family="sans-serif" font-size="13" font-weight="bold" fill="#ffffff" transform="rotate(-90 770 195)" text-anchor="middle">SOC Dashboard</text>
+
+  <!-- Text Annotations over Arrows -->
+  <text x="210" y="190" font-family="sans-serif" font-size="11" font-weight="bold" fill="#3b82f6" text-anchor="middle">PCAPs</text>
+  <text x="470" y="190" font-family="sans-serif" font-size="11" font-weight="bold" fill="#ef4444" text-anchor="middle">Threat Alerts</text>
+  
+</svg>
