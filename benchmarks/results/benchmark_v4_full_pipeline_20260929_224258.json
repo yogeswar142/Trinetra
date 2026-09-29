@@ -1,0 +1,77 @@
+{
+  "benchmark_version": "v4",
+  "benchmark_scope": "Phase 2b: Full Pipeline (Ingest + FlowTable + WindowedFeatureEngine + ML Inference + Incident Deduplication + Forensic Ledger)",
+  "pipeline_components_active": [
+    "PcapIngest (dpkt classic/pcapng)",
+    "FlowTable (bounded LRU, passive TCP tracker)",
+    "WindowedFeatureEngine (5 dimensions)",
+    "DdosDetector (calibrated RandomForestClassifier, ThreatClass.VOLUMETRIC_DDOS)",
+    "PortScanDetector (calibrated RandomForestClassifier, ThreatClass.PORT_SCANNING)",
+    "IncidentDeduplicator (60-second sliding window)",
+    "ForensicLedger (SHA-256 Merkle tree + Ed25519 signing)"
+  ],
+  "cadence_commitment": "A full-pipeline benchmark will be executed and recorded at the end of every sub-phase.",
+  "system_telemetry": {
+    "timestamp_utc": "2026-09-29T17:09:44.745043+00:00",
+    "platform_system": "Windows",
+    "platform_release": "10",
+    "platform_machine": "AMD64",
+    "processor": "ARMv8 (64-bit) Family 8 Model 2 Revision 101, Qualcomm Technologies Inc",
+    "cpu_count_logical": 6,
+    "python_version": "3.11.9",
+    "python_architecture": "x64 Python emulated on ARM64 Windows (Snapdragon ARMv8, platform.machine()='AMD64')",
+    "power_plugged": false,
+    "battery_percent": 60,
+    "power_plan": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+    "ram_total_gb": 15.63,
+    "ram_available_gb": 3.45
+  },
+  "realistic_mixed_500k": {
+    "throughput": {
+      "repetitions": 2,
+      "packets_processed": 500000,
+      "total_alerts_emitted": 80,
+      "packets_per_second": {
+        "median": 8225.05,
+        "min": 8082.0,
+        "max": 8225.05,
+        "raw": [
+          8082.0,
+          8225.05
+        ]
+      },
+      "throughput_mbps": {
+        "median": 42.55,
+        "min": 41.81,
+        "max": 42.55
+      }
+    },
+    "latency": {
+      "definition_a_service_time_per_packet": {
+        "count": 30000,
+        "mean_us": 47.953,
+        "p50_us": 41.9,
+        "p95_us": 84.7,
+        "p99_us": 130.5,
+        "p99_9_us": 423.3,
+        "max_us": 1518.8
+      },
+      "definition_b_ingest_to_alert_emit_lag": {
+        "count": 30000,
+        "mean_us": 2214.366,
+        "p50_us": 2100.8,
+        "p95_us": 2752.5,
+        "p99_us": 3313.3,
+        "p99_9_us": 5433.3,
+        "max_us": 37044.3
+      }
+    },
+    "memory": {
+      "packets_processed": 50000,
+      "rss_start_mb": 346.69,
+      "rss_peak_mb": 347.12,
+      "rss_end_mb": 347.12,
+      "rss_delta_mb": 0.43
+    }
+  }
+}
