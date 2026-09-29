@@ -65,7 +65,6 @@ class PairFeatures:
     iat_std: float
     iat_cv: float
     iat_autocorr: float
-    is_periodic: bool
 
 
 @dataclass(slots=True)
@@ -237,7 +236,6 @@ class PairAccumulator:
                 iat_std=0.0,
                 iat_cv=0.0,
                 iat_autocorr=0.0,
-                is_periodic=False,
             )
 
         prof = analyze_periodicity(ts_list, min_samples=4)
@@ -250,7 +248,6 @@ class PairAccumulator:
                 iat_std=round(prof.std_iat, 4),
                 iat_cv=round(prof.cv_iat, 4),
                 iat_autocorr=round(prof.autocorr_peak, 4),
-                is_periodic=prof.is_periodic or prof.is_jittered_periodic,
             )
         else:
             diffs = [ts_list[i] - ts_list[i - 1] for i in range(1, n) if (ts_list[i] - ts_list[i - 1]) > 0.01]
@@ -263,7 +260,6 @@ class PairAccumulator:
                 iat_std=0.0,
                 iat_cv=0.0,
                 iat_autocorr=0.0,
-                is_periodic=False,
             )
 
 
@@ -334,6 +330,14 @@ class WindowedFeatureEngine:
         self.domain_accumulators: OrderedDict[tuple[str, str], DomainAccumulator] = OrderedDict()
         self.tls_accumulators: OrderedDict[str, TlsFlowFeatures] = OrderedDict()
 
+        self.eviction_counts: dict[str, int] = {
+            "dst": 0,
+            "src": 0,
+            "pair": 0,
+            "domain": 0,
+            "tls": 0,
+        }
+
         self.last_observed_timestamp = 0.0
 
     def process_event(self, event: FlowEvent) -> None:
@@ -352,6 +356,7 @@ class WindowedFeatureEngine:
         else:
             if len(self.dst_accumulators) >= self.max_dst_keys:
                 self.dst_accumulators.popitem(last=False)
+                self.eviction_counts["dst"] += 1
             dst_acc = DstAccumulator(self.dst_window_seconds)
             self.dst_accumulators[dst_key] = dst_acc
 
@@ -373,6 +378,7 @@ class WindowedFeatureEngine:
         else:
             if len(self.src_accumulators) >= self.max_src_keys:
                 self.src_accumulators.popitem(last=False)
+                self.eviction_counts["src"] += 1
             src_acc = SrcAccumulator(self.src_window_seconds)
             self.src_accumulators[src_key] = src_acc
 
@@ -386,6 +392,7 @@ class WindowedFeatureEngine:
         else:
             if len(self.pair_accumulators) >= self.max_pair_keys:
                 self.pair_accumulators.popitem(last=False)
+                self.eviction_counts["pair"] += 1
             pair_acc = PairAccumulator(max_samples=64)
             self.pair_accumulators[pair_key] = pair_acc
 
@@ -400,6 +407,7 @@ class WindowedFeatureEngine:
             else:
                 if len(self.domain_accumulators) >= self.max_domain_keys:
                     self.domain_accumulators.popitem(last=False)
+                    self.eviction_counts["domain"] += 1
                 dom_acc = DomainAccumulator(max_queries=50)
                 self.domain_accumulators[dom_key] = dom_acc
             dom_acc.add_query(event.dns_query, event.dns_qtype)
@@ -412,6 +420,7 @@ class WindowedFeatureEngine:
             else:
                 if len(self.tls_accumulators) >= self.max_tls_keys:
                     self.tls_accumulators.popitem(last=False)
+                    self.eviction_counts["tls"] += 1
                 pst = [event.length]
                 self.tls_accumulators[flow_id] = TlsFlowFeatures(
                     flow_id=flow_id,

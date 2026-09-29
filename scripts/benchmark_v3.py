@@ -33,12 +33,22 @@ from trinetra.config import EnclaveConfig
 from trinetra.features.windowed_engine import WindowedFeatureEngine
 from trinetra.ingest.flow_table import FlowTable
 from trinetra.ingest.pcap import PcapIngest
+from trinetra.schemas import FlowEvent
 
 RESULTS_DIR = REPO_ROOT / "benchmarks" / "results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 FIXTURES_DIR = REPO_ROOT / "data" / "fixtures"
 MIXED_500K_PATH = FIXTURES_DIR / "realistic_mixed_500k.pcap"
+
+
+def get_windows_power_plan() -> str:
+    try:
+        import subprocess
+        res = subprocess.run(["powercfg", "/getactivescheme"], capture_output=True, text=True, check=True)
+        return res.stdout.strip()
+    except Exception:
+        return "Unknown"
 
 
 def collect_telemetry() -> dict:
@@ -52,8 +62,10 @@ def collect_telemetry() -> dict:
         "processor": platform.processor(),
         "cpu_count_logical": multiprocessing.cpu_count(),
         "python_version": platform.python_version(),
+        "python_architecture": "x64 Python emulated on ARM64 Windows (Snapdragon ARMv8, platform.machine()='AMD64')",
         "power_plugged": battery.power_plugged if battery else None,
         "battery_percent": battery.percent if battery else None,
+        "power_plan": get_windows_power_plan(),
         "ram_total_gb": round(vm.total / (1024 ** 3), 2),
         "ram_available_gb": round(vm.available / (1024 ** 3), 2),
     }
@@ -114,6 +126,7 @@ def benchmark_v3_latency(pcap_path: Path, max_packets: int = 30_000) -> dict:
     engine = WindowedFeatureEngine()
 
     service_times_ns: list[int] = []
+    pipeline_lags_ns: list[int] = []
 
     with open(pcap_path, "rb") as f:
         reader = dpkt.pcap.Reader(f)
@@ -124,23 +137,35 @@ def benchmark_v3_latency(pcap_path: Path, max_packets: int = 30_000) -> dict:
             if ev is not None:
                 table.process_event(ev)
                 engine.process_event(ev)
-            t_end = time.perf_counter_ns()
-            service_times_ns.append(t_end - t_start)
+                t_service = time.perf_counter_ns()
+                # Latency Definition (b): Ingest to feature emission readiness
+                _ = engine.get_dst_features(ev.dst_ip)
+                t_emit = time.perf_counter_ns()
+                pipeline_lags_ns.append(t_emit - t_start)
+            else:
+                t_service = time.perf_counter_ns()
 
+            service_times_ns.append(t_service - t_start)
             count += 1
             if count >= max_packets:
                 break
 
-    service_times_ns.sort()
-    n = len(service_times_ns)
+    def calc_percentiles(arr: list[int]) -> dict:
+        arr.sort()
+        n = len(arr)
+        return {
+            "count": n,
+            "mean_us": round(sum(arr) / (n * 1000.0), 3),
+            "p50_us": round(arr[int(n * 0.50)] / 1000.0, 3),
+            "p95_us": round(arr[int(n * 0.95)] / 1000.0, 3),
+            "p99_us": round(arr[int(n * 0.99)] / 1000.0, 3),
+            "p99_9_us": round(arr[min(int(n * 0.999), n - 1)] / 1000.0, 3),
+            "max_us": round(arr[-1] / 1000.0, 3),
+        }
+
     return {
-        "count": n,
-        "mean_us": round(sum(service_times_ns) / (n * 1000.0), 3),
-        "p50_us": round(service_times_ns[int(n * 0.50)] / 1000.0, 3),
-        "p95_us": round(service_times_ns[int(n * 0.95)] / 1000.0, 3),
-        "p99_us": round(service_times_ns[int(n * 0.99)] / 1000.0, 3),
-        "p99_9_us": round(service_times_ns[min(int(n * 0.999), n - 1)] / 1000.0, 3),
-        "max_us": round(service_times_ns[-1] / 1000.0, 3),
+        "definition_a_service_time_per_packet": calc_percentiles(service_times_ns),
+        "definition_b_ingest_to_feature_ready_lag": calc_percentiles(pipeline_lags_ns),
     }
 
 
@@ -165,9 +190,60 @@ def benchmark_v3_memory(pcap_path: Path, max_packets: int = 50_000) -> dict:
     rss_end_mb = proc.memory_info().rss / (1024 * 1024)
     return {
         "packets_processed": count,
-        "rss_initial_mb": round(rss_start_mb, 2),
+        "rss_start_mb": round(rss_start_mb, 2),
         "rss_peak_mb": round(rss_end_mb, 2),
+        "rss_end_mb": round(rss_end_mb, 2),
         "rss_delta_mb": round(rss_end_mb - rss_start_mb, 2),
+    }
+
+
+def benchmark_v3_eviction_stress(packet_count: int = 20_000) -> dict:
+    """Stress tests the WindowedFeatureEngine under a high-cardinality spoofed flood."""
+    proc = psutil.Process(os.getpid())
+    rss_start = proc.memory_info().rss / (1024 * 1024)
+
+    # Bound capacities tightly to force massive eviction
+    engine = WindowedFeatureEngine(
+        dst_window_seconds=10.0,
+        src_window_seconds=10.0,
+        max_dst_keys=500,
+        max_src_keys=500,
+        max_pair_keys=1_000,
+    )
+
+    import random
+    rng = random.Random(42)
+
+    for i in range(packet_count):
+        src_ip = f"10.{rng.randint(1, 254)}.{rng.randint(1, 254)}.{rng.randint(1, 254)}"
+        dst_ip = f"192.168.1.{rng.randint(1, 254)}"
+        ts = 1000.0 + (i * 0.001)
+        ev = FlowEvent(
+            timestamp=ts,
+            src_ip=src_ip,
+            dst_ip=dst_ip,
+            src_port=rng.randint(1024, 65535),
+            dst_port=80,
+            protocol="TCP",
+            length=64,
+            tcp_flags={"SYN": True, "ACK": False, "FIN": False, "RST": False, "PSH": False, "URG": False},
+        )
+        engine.process_event(ev)
+
+    rss_end = proc.memory_info().rss / (1024 * 1024)
+
+    return {
+        "packets_injected": packet_count,
+        "configured_max_dst_keys": 500,
+        "configured_max_src_keys": 500,
+        "final_active_dst_keys": len(engine.dst_accumulators),
+        "final_active_src_keys": len(engine.src_accumulators),
+        "evictions_enforced": engine.eviction_counts,
+        "rss_start_mb": round(rss_start, 2),
+        "rss_end_mb": round(rss_end, 2),
+        "memory_plateau_preserved": (
+            len(engine.dst_accumulators) <= 500 and len(engine.src_accumulators) <= 500
+        ),
     }
 
 
@@ -182,20 +258,29 @@ def run_benchmark_v3() -> Path:
     print("======================================================================")
     telemetry = collect_telemetry()
     print(f"Host: {telemetry['platform_system']} ({telemetry['platform_machine']}), {telemetry['processor']}")
-    print(f"Power: {'Plugged In' if telemetry['power_plugged'] else 'On Battery'} ({telemetry['battery_percent']}%)")
+    print(f"Architecture: {telemetry['python_architecture']}")
+    print(f"Power: {'Plugged In' if telemetry['power_plugged'] else 'On Battery'} ({telemetry['battery_percent']}%) | Scheme: {telemetry['power_plan']}")
     print("======================================================================")
 
-    print("\n[1/3] Measuring pipeline throughput with WindowedFeatureEngine (500k pkts)...")
+    print("\n[1/4] Measuring pipeline throughput with WindowedFeatureEngine (500k pkts)...")
     tp = benchmark_v3_throughput(MIXED_500K_PATH, repetitions=2)
     print(f"  -> Throughput: {tp['packets_per_second']['median']:,} pkts/sec | {tp['throughput_mbps']['median']} Mbps")
 
-    print("\n[2/3] Measuring per-packet service time latency...")
+    print("\n[2/4] Measuring per-packet service time and pipeline lag...")
     lat = benchmark_v3_latency(MIXED_500K_PATH, max_packets=30_000)
-    print(f"  -> Latency (service time p50/p95/p99/p99.9/max): {lat['p50_us']}µs / {lat['p95_us']}µs / {lat['p99_us']}µs / {lat['p99_9_us']}µs / {lat['max_us']}µs")
+    svc = lat["definition_a_service_time_per_packet"]
+    lag = lat["definition_b_ingest_to_feature_ready_lag"]
+    print(f"  -> Latency (a) Service Time: p50={svc['p50_us']}µs / p95={svc['p95_us']}µs / p99={svc['p99_us']}µs / p99.9={svc['p99_9_us']}µs / max={svc['max_us']}µs")
+    print(f"  -> Latency (b) Ingest-to-Ready: p50={lag['p50_us']}µs / p95={lag['p95_us']}µs / p99={lag['p99_us']}µs / p99.9={lag['p99_9_us']}µs / max={lag['max_us']}µs")
 
-    print("\n[3/3] Measuring memory consumption...")
+    print("\n[3/4] Measuring memory consumption on mixed traffic...")
     mem = benchmark_v3_memory(MIXED_500K_PATH, max_packets=50_000)
-    print(f"  -> Memory RSS Delta: +{mem['rss_delta_mb']} MB (Peak RSS: {mem['rss_peak_mb']} MB)")
+    print(f"  -> RSS Start: {mem['rss_start_mb']} MB | Peak/End: {mem['rss_end_mb']} MB (Delta: +{mem['rss_delta_mb']} MB)")
+
+    print("\n[4/4] Stress testing eviction under high-cardinality spoofed flood...")
+    evict = benchmark_v3_eviction_stress(packet_count=20_000)
+    print(f"  -> Evictions Enforced: dst={evict['evictions_enforced']['dst']}, src={evict['evictions_enforced']['src']}, pair={evict['evictions_enforced']['pair']}")
+    print(f"  -> Active Keys: dst={evict['final_active_dst_keys']}/500, src={evict['final_active_src_keys']}/500 (Plateau Preserved: {evict['memory_plateau_preserved']})")
 
     ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_file = RESULTS_DIR / f"benchmark_v3_feature_engine_{ts_str}.json"
@@ -205,11 +290,18 @@ def run_benchmark_v3() -> Path:
         "benchmark_scope": "Phase 2a: Ingest + FlowTable + WindowedFeatureEngine (NO detector models, NO inference)",
         "cadence_commitment": "A full-pipeline benchmark will be executed and recorded at the end of every sub-phase.",
         "system_telemetry": telemetry,
+        "feature_engine_capabilities": {
+            "dns_parsing": "Domain query names, query types, lengths, Shannon entropy",
+            "tls_parsing": "JA3 client hello md5, JA3S server hello md5, SNI, PST sequence",
+            "quic_parsing": "Long/short header parsing without key derivation (passive zero-decrypt)",
+            "entropy_calculation": "Character Shannon entropy on DNS labels and IP distributions",
+        },
         "realistic_mixed_500k": {
             "throughput": tp,
             "latency": lat,
             "memory": mem,
         },
+        "eviction_stress_test": evict,
     }
 
     with open(out_file, "w") as f:

@@ -31,6 +31,18 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 )
 
 
+import platform
+import numpy as np
+import sklearn
+try:
+    import lightgbm
+    _LGBM_VERSION = lightgbm.__version__
+except ImportError:
+    _LGBM_VERSION = None
+
+from trinetra.config import DEFAULT_CONFIG, EnclaveConfig
+
+
 class ArtifactSecurityError(Exception):
     """Base exception for artifact security and verification violations."""
     pass
@@ -44,6 +56,21 @@ class ManifestSignatureError(ArtifactSecurityError):
 class ArtifactChecksumMismatchError(ArtifactSecurityError):
     """Raised when an artifact's computed SHA-256 does not match the signed manifest."""
     pass
+
+
+class EnvironmentVersionMismatchError(ArtifactSecurityError):
+    """Raised when serialized artifact environment versions do not match current runtime."""
+    pass
+
+
+def get_current_runtime_environment() -> dict[str, Any]:
+    """Captures current runtime Python, numpy, scikit-learn, and LightGBM versions."""
+    return {
+        "python_version": platform.python_version(),
+        "numpy_version": np.__version__,
+        "sklearn_version": sklearn.__version__,
+        "lightgbm_version": _LGBM_VERSION,
+    }
 
 
 def compute_file_sha256(file_path: Path) -> str:
@@ -67,12 +94,14 @@ def create_and_sign_manifest(
     artifacts: list[dict[str, Any]],
     private_key: Ed25519PrivateKey,
     version: str = "1.0.0",
+    custom_runtime: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """
-    Creates a manifest for the given artifacts and signs it with the Ed25519 private key.
+    Creates a manifest for the given artifacts, records runtime versions, and signs it with the Ed25519 private key.
     """
     manifest_body = {
         "version": version,
+        "runtime_environment": custom_runtime or get_current_runtime_environment(),
         "artifacts": artifacts,
     }
     canonical_bytes = canonicalize_manifest_body(manifest_body)
@@ -101,42 +130,90 @@ def verify_manifest_signature(
         raise ManifestSignatureError(f"Cryptographic verification failed: {err}") from err
 
 
+def verify_runtime_compatibility(
+    manifest_runtime: dict[str, Any],
+    allow_mismatch: bool = False,
+) -> None:
+    """
+    Verifies that runtime Python and ML library versions match the artifact build environment.
+    """
+    if allow_mismatch:
+        return
+
+    current = get_current_runtime_environment()
+
+    # Python major.minor check
+    m_py = ".".join(manifest_runtime.get("python_version", "").split(".")[:2])
+    c_py = ".".join(current["python_version"].split(".")[:2])
+    if m_py and c_py and m_py != c_py:
+        raise EnvironmentVersionMismatchError(
+            f"Python runtime mismatch: artifact was built with Python {manifest_runtime.get('python_version')} "
+            f"but current runtime is Python {current['python_version']}. Set allow_version_mismatch=True to override."
+        )
+
+    # Scikit-learn major.minor check
+    m_sk = ".".join(manifest_runtime.get("sklearn_version", "").split(".")[:2])
+    c_sk = ".".join(current["sklearn_version"].split(".")[:2])
+    if m_sk and c_sk and m_sk != c_sk:
+        raise EnvironmentVersionMismatchError(
+            f"scikit-learn version mismatch: artifact was built with {manifest_runtime.get('sklearn_version')} "
+            f"but current runtime is {current['sklearn_version']}. Set allow_version_mismatch=True to override."
+        )
+
+
 def safe_load_artifact(
     artifact_path: Path,
     manifest_path: Path,
-    public_key: Ed25519PublicKey,
+    public_key: Optional[Ed25519PublicKey] = None,
+    config: Optional[EnclaveConfig] = None,
+    allow_version_mismatch: bool = False,
 ) -> Any:
     """
-    Cryptographically verifies the manifest and artifact checksum BEFORE calling joblib.load.
+    Cryptographically verifies the manifest, environment compatibility, and artifact checksum BEFORE calling joblib.load.
+    Never reads the public key from the model directory; loads strictly from pinned config if not explicitly passed.
 
     Args:
         artifact_path: Path to the .joblib / .pkl model file.
         manifest_path: Path to the models_manifest.json file.
-        public_key: Ed25519PublicKey of the signing enclave.
+        public_key: Optional explicit Ed25519PublicKey. If None, loaded from pinned enclave config.
+        config: Optional EnclaveConfig holding pinned ledger_pubkey_path.
+        allow_version_mismatch: Whether to permit execution across different Python/sklearn versions.
 
     Returns:
         The deserialized model object.
-
-    Raises:
-        ManifestSignatureError: If the manifest signature is invalid or tampered with.
-        ArtifactChecksumMismatchError: If the artifact bytes do not match the signed SHA-256.
-        FileNotFoundError: If artifact or manifest do not exist.
     """
     if not manifest_path.exists():
         raise FileNotFoundError(f"Manifest not found: {manifest_path}")
     if not artifact_path.exists():
         raise FileNotFoundError(f"Artifact not found: {artifact_path}")
 
-    # 1. Parse manifest
+    # 1. Resolve Pinned Public Key (Never trust files in the model folder)
+    if public_key is None:
+        cfg = config or DEFAULT_CONFIG
+        pub_path = cfg.ledger_pubkey_path
+        if not pub_path.exists():
+            raise ArtifactSecurityError(
+                f"Pinned enclave public key missing at {pub_path}. "
+                f"Cannot verify model artifact without a trusted trust anchor."
+            )
+        from cryptography.hazmat.primitives.serialization import load_pem_public_key
+        raw_key = pub_path.read_bytes()
+        public_key = load_pem_public_key(raw_key)  # type: ignore
+
+    # 2. Parse manifest
     try:
         manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
     except Exception as err:
         raise ArtifactSecurityError(f"Corrupt manifest JSON: {err}") from err
 
-    # 2. Verify Manifest Signature BEFORE inspecting artifacts
+    # 3. Verify Manifest Signature BEFORE inspecting artifacts or deserializing
     verify_manifest_signature(manifest_data, public_key)
 
-    # 3. Locate artifact entry in manifest
+    # 4. Verify Runtime Environment Compatibility
+    if "runtime_environment" in manifest_data:
+        verify_runtime_compatibility(manifest_data["runtime_environment"], allow_mismatch=allow_version_mismatch)
+
+    # 5. Locate artifact entry in manifest
     target_rel_path = artifact_path.name
     entry: Optional[dict[str, Any]] = None
     for item in manifest_data.get("artifacts", []):
@@ -151,7 +228,7 @@ def safe_load_artifact(
     if not expected_sha256:
         raise ArtifactSecurityError("Manifest entry is missing 'sha256' field")
 
-    # 4. Verify Artifact SHA-256 Hash BEFORE deserialization
+    # 6. Verify Artifact SHA-256 Hash BEFORE deserialization
     actual_sha256 = compute_file_sha256(artifact_path)
     if actual_sha256.lower() != expected_sha256.lower():
         raise ArtifactChecksumMismatchError(
@@ -160,5 +237,5 @@ def safe_load_artifact(
             f"ABORTING DESERIALIZATION TO PREVENT CODE EXECUTION."
         )
 
-    # 5. Deserialization is safe to execute
+    # 7. Deserialization is safe to execute
     return joblib.load(artifact_path)

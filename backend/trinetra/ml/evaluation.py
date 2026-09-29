@@ -68,11 +68,14 @@ class IncidentEvaluation:
 def compute_classification_metrics(
     y_true: Sequence[int],
     y_pred: Sequence[int],
+    groups: Optional[Sequence[Any]] = None,
     n_bootstraps: int = 1000,
     random_seed: int = 42,
 ) -> ClassificationReport:
     """
     Computes Precision, Recall, F1 and their 95% bootstrap confidence intervals.
+    When groups are provided (e.g. /24 subnet or scenario run), resamples by group/cluster
+    to preserve intra-group correlation and prevent optimistic confidence intervals.
     """
     y_t = np.asarray(y_true, dtype=np.int32)
     y_p = np.asarray(y_pred, dtype=np.int32)
@@ -92,14 +95,27 @@ def compute_classification_metrics(
     rec_point = (tp / (tp + fn)) if (tp + fn) > 0 else 0.0
     f1_point = (2 * prec_point * rec_point / (prec_point + rec_point)) if (prec_point + rec_point) > 0 else 0.0
 
-    # Percentile bootstrap
+    # Percentile bootstrap (resample by group if provided, else row)
     rng = np.random.default_rng(random_seed)
     boot_prec: list[float] = []
     boot_rec: list[float] = []
     boot_f1: list[float] = []
 
+    if groups is not None:
+        if len(groups) != n:
+            raise ValueError("Length of groups must match y_true")
+        groups_arr = np.asarray(groups)
+        unique_groups = np.unique(groups_arr)
+        group_to_indices = {g: np.where(groups_arr == g)[0] for g in unique_groups}
+        n_g = len(unique_groups)
+
     for _ in range(n_bootstraps):
-        idx = rng.integers(0, n, size=n)
+        if groups is not None:
+            sampled_g = rng.choice(unique_groups, size=n_g, replace=True)
+            idx = np.concatenate([group_to_indices[g] for g in sampled_g])
+        else:
+            idx = rng.integers(0, n, size=n)
+
         b_yt = y_t[idx]
         b_yp = y_p[idx]
 

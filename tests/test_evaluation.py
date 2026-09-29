@@ -51,6 +51,17 @@ class TestClassificationMetricsAndBootstrapCI:
         assert rep.recall.ci_lower <= rep.recall.point_estimate <= rep.recall.ci_upper
         assert rep.f1.ci_lower <= rep.f1.point_estimate <= rep.f1.ci_upper
 
+    def test_group_cluster_bootstrap_ci(self) -> None:
+        y_true = [1] * 30 + [0] * 30
+        y_pred = [1] * 25 + [0] * 5 + [1] * 5 + [0] * 25
+        # 6 clusters of 10 samples each
+        groups = ["g1"] * 10 + ["g2"] * 10 + ["g3"] * 10 + ["g4"] * 10 + ["g5"] * 10 + ["g6"] * 10
+
+        rep = compute_classification_metrics(y_true, y_pred, groups=groups, n_bootstraps=300, random_seed=42)
+        assert rep.precision.ci_lower <= rep.precision.point_estimate <= rep.precision.ci_upper
+        assert rep.recall.ci_lower <= rep.recall.point_estimate <= rep.recall.ci_upper
+        assert rep.f1.ci_lower <= rep.f1.point_estimate <= rep.f1.ci_upper
+
 
 class TestCalibrationCurveAndReliability:
     def test_calibration_curve_with_synthetic_scores(self) -> None:

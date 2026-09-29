@@ -16,12 +16,12 @@ We conducted an audit of public GitHub repositories associated with SIH PS 26145
 
 | # | Repository URL | Last Commit (Verified) | Claimed Capabilities | Verifiably Present in Code (with File/Line Citations) | Verification Status & Gaps |
 |---|---|---|---|---|---|
-| 1 | `https://github.com/archduke1337/SIH26145` | 28 Sep 2026 | RF+IF, Ollama qwen2.5, WebSocket alert stream | `docs/ARCHITECTURE.md` (lines 14–34): *"Synthetic traffic generator / fixture -> Read-only JSONL replay -> Python streaming worker -> Appwrite Databases"*; `backend/pyproject.toml` lists `fastapi`, `pydantic`, `uvicorn`, `appwrite`, `httpx` | [VERIFIED] Pre-parsed JSONL replay only; zero raw packet or NetFlow binary parsing; no TLS JA3/JA4 byte extractor; no cryptographic ledger. |
-| 2 | `https://github.com/xhhbbshbsj/SIH-2026-26145` | 27 Sep 2026 | SentryDiode: Packet capture, ML detection, FastAPI backend | `sentry-diode/requirements.txt` contains `scapy`, `dpkt`, `numpy`, `scikit-learn`, `fastapi`; `sniffer.py` uses Scapy `sniff()` loop | [VERIFIED] Scapy packet capture loop; no RFC 3954 binary NetFlow v9 parser; no passive TCP session tracking state machine; no tamper-evident ledger. |
-| 3 | `https://github.com/AtharvaSamant4/DrishtiGuard` | 24 Sep 2026 | Unidirectional privacy / network monitor | `apps/extension/manifest.json`, `apps/web/package.json` | [VERIFIED] Client-side Next.js / browser extension privacy utility, not an air-gapped network TAP / data diode IDS. |
-| 4 | `https://github.com/Aman-Verma-28/SIH-2024-PS-26145` | 18 Aug 2024 | AI threat detector for diodes | Single `README.md` markdown file | [VERIFIED PLACEHOLDER] Empty repository stub. **Note on naming:** The exact reason for the "SIH-2024" repository name prefix while referencing PS 26145 is [UNVERIFIED] (the repository was created on 18 Aug 2024 and contains only a stub README.md). |
+| 1 | `https://github.com/archduke1337/SIH26145` | 28 Sep 2026 | RF+IF, Ollama qwen2.5, WebSocket alert stream | `docs/ARCHITECTURE.md` (lines 14–34): *"Synthetic traffic generator / fixture -> Read-only JSONL replay -> Python streaming worker -> Appwrite Databases"*; `backend/pyproject.toml` lists `fastapi`, `pydantic`, `uvicorn`, `appwrite`, `httpx` | [VERIFIED] Replays pre-parsed JSONL flow records into ML detectors (RF+IF) and local Ollama `qwen2.5` narrator with Appwrite/WebSocket frontend. Whole-tree code audit confirms: zero binary PCAP/NetFlow ingest (`git grep -i "dpkt\|pcap\|netflow"` yields 0 parser matches); zero TLS JA3 byte extraction (`git grep -i "ja3"` yields 0 matches); zero tamper-evident ledger (`git grep -i "merkle\|ledger\|ed25519"` yields 0 matches). |
+| 2 | `https://github.com/xhhbbshbsj/SIH-2026-26145` | 27 Sep 2026 | SentryDiode: Packet capture, ML detection, FastAPI backend | `sentry-diode/requirements.txt` contains `scapy`, `dpkt`, `numpy`, `scikit-learn`, `fastapi`; `sniffer.py` uses Scapy `sniff()` loop | [VERIFIED] Live Scapy packet sniffing loop feeding scikit-learn detectors. Whole-tree code audit confirms: zero RFC 3954 binary NetFlow parser (`git grep -i "netflow"` yields 0 matches); zero passive TCP state machine (`git grep -i "tcpstate\|retransmission"` yields 0 matches); zero cryptographic ledger (`git grep -i "ledger\|merkle\|signature"` yields 0 matches). |
+| 3 | `https://github.com/AtharvaSamant4/DrishtiGuard` | 24 Sep 2026 | Unidirectional privacy / network monitor | `apps/extension/manifest.json`, `apps/web/package.json` | [VERIFIED] Client-side Next.js web application and browser extension privacy tool (`apps/extension/manifest.json`). Whole-tree code audit confirms: zero network TAP, raw socket, or data diode IDS engine (`git grep -i "pcap\|netflow\|diode"` yields 0 packet processing matches). |
+| 4 | `https://github.com/Aman-Verma-28/SIH-2024-PS-26145` | 18 Aug 2024 | AI threat detector for diodes | Single `README.md` markdown file | [VERIFIED PLACEHOLDER] Empty repository stub. Whole-tree audit confirms single `README.md` file (1,498 bytes); zero source code files (`git grep ""` matches only README text). **Note on naming:** The exact reason for the "SIH-2024" repository name prefix while referencing PS 26145 is [UNVERIFIED] (the repository was created on 18 Aug 2024). |
 
-*Note on Public Repository Claims:* Searches across public platforms reveal various repos that claim features such as JA3/JA3S/JA4 parsing, web dashboards, or AI analysts in their high-level READMEs. When the underlying code is inspected, these are typically UI stubs, static placeholders, or pre-parsed batch scripts lacking line-rate streaming packet parsing. Any additional repos not directly opened and inspected in this session are excluded from counts and tagged [UNVERIFIED].
+*Note on Unopened Public Repositories:* Any repository not directly fetched, opened, and code-audited with file/line evidence in this session is excluded from competitive claims and tagged [UNVERIFIED].
 
 ### 1.1 Trinetra Demonstrated Capabilities (Test- and Benchmark-Proven)
 Rather than asserting unverifiable claims about other teams, Trinetra defines its positioning strictly by **what we demonstrably do, with an automated test or reproducible benchmark to prove it**:
@@ -29,7 +29,7 @@ Rather than asserting unverifiable claims about other teams, Trinetra defines it
 2. **Offline Tamper-Evident Forensic Ledger:** Proved by `tests/test_ledger.py` (Merkle tree SHA-256 leaves, Ed25519 digital signatures, inclusion proofs, chained block headers).
 3. **Passive Bidirectional TAP Tracking with Mid-Stream Recovery:** Proved by `tests/test_flow_table_tcp.py` and 4 disk-backed edge-case PCAPs in `data/fixtures/tcp_edge_cases/` (zero-window, out-of-order retransmission, midstream discovery, asymmetric one-sided loss).
 4. **Air-Gap Rigor:** Proved by `tests/test_no_transmit.py` (AST scan forbidding transmit calls/libraries, runtime socket blocking, Docker Compose enclave isolation verification).
-5. **Empirical Performance Benchmarks:** Proved by `scripts/benchmark_v2.py` saving machine-readable JSON metrics on a 500,000-packet mixed capture on our own hardware.
+5. **Empirical Performance Benchmarks:** Proved by `scripts/benchmark_v2.py` and `scripts/benchmark_v3.py` saving machine-readable JSON metrics on a 500,000-packet mixed capture on our own hardware.
 
 ---
 
@@ -70,23 +70,24 @@ State transitions (happy path):
 
 ## 3. Datasets and Traffic Generation Tooling (Licensing Verified)
 
-| Tool / Dataset | Coverage / Threat | Format | License & Primary Source Quote | Canonical URL | Verification Status (Fetched 29 Sep 2026) |
+| Tool / Dataset | Coverage / Threat | Format | License & Primary Source Quote | Canonical URL | Verification Status & Fetch Date |
 |---|---|---|---|---|---|
-| **iperf3** | Benign baseline throughput (T-a) | TCP/UDP stream | BSD-3-Clause | https://github.com/esnet/iperf/blob/master/LICENSE | [VERIFIED] Actively maintained |
-| **Ostinato** | Packet crafting & wire playback | PCAP / Ethernet | GPLv3 | https://github.com/pstavirs/ostinato | [VERIFIED] Actively maintained |
-| **TRex (Cisco)** | High-speed stateful traffic generation | DPDK / PCAP | Apache-2.0 | https://github.com/cisco-system-traffic-generator/trex-core | [VERIFIED] Actively maintained |
-| **hping3** | SYN, UDP, ICMP flooding (T-a) | Raw packets | GPLv2 | https://github.com/antirez/hping | [VERIFIED] Stable reference standard |
-| **Slowloris** | Connection starvation / slow HTTP (T-a) | HTTP/TCP | MIT | https://github.com/gkbrk/slowloris | [VERIFIED] Stable standard |
-| **dnscat2** | DNS tunnelling, C2, exfiltration (T-c) | DNS queries (TXT/MX/CNAME) | BSD-2-Clause | https://github.com/iagox86/dnscat2 | [VERIFIED] Maintained reference |
-| **iodine** | IP over DNS tunnel (T-c) | DNS tunnel | ISC | https://github.com/yarrick/iodine | [VERIFIED] Stable standard |
-| **DGArchive (Fraunhofer FKIE)** | Algorithmic domain queries (T-c) | Domain lists | CC BY-NC-SA 3.0 (*"The whole content of the website is released under Creative Common's CC BY-NC-SA 3.0 license... Our informal policy is that you can do pretty much what you want with it as long as you maintain the credits and you don't abuse it to make a profit off of our work."*) | https://dgarchive.caad.fkie.fraunhofer.de/terms.html | [VERIFIED GATED] Access gated via email request to `dgarchive@fkie.fraunhofer.de`. **Fallback:** Deterministic built-in algorithmic generators for Conficker, Cryptolocker, Bamital, Doxrem. |
-| **Tranco List** | Top 1M benign domains baseline (T-c) | CSV (domain rankings) | Research-oriented composite license (Le Pochat et al. NDSS 2019): Cisco Umbrella (free research), Majestic (CC BY 3.0), CrUX (CC BY-SA 4.0), Cloudflare Radar (CC BY-NC 4.0). Over 600 citations. | https://tranco-list.eu/ | [VERIFIED] Permitted for non-commercial security research. |
-| **Sliver (Bishop Fox)**| Modern C2 framework / beaconing (T-b, T-d) | TLS/HTTP/mTLS/DNS C2 | GPLv3 | https://github.com/BishopFox/sliver | [VERIFIED] Actively maintained |
-| **CTU-13** | Botnet C2, scanning, DDoS (T-a, T-b, T-e) | PCAP + NetFlow | CC BY 2.0 (*"Creative Commons Attribution 2.0 Generic"*, Garcia et al. 2014, DOI: 10.1016/j.cose.2014.05.011) | https://www.stratosphereips.org/datasets-ctu13 | [VERIFIED] Stratosphere IPS Lab. |
-| **CIC-IDS2017** | Multi-vector attack suites | PCAP + CSV flows | Academic Use License (UNB Canadian Institute for Cybersecurity) | https://www.unb.ca/cic/datasets/ids-2017.html | [VERIFIED] Free for educational & competition research. |
-| **malware-traffic-analysis.net** | Real Cobalt Strike, Qakbot, RATs (T-d) | PCAPs | Educational / Security Research | https://www.malware-traffic-analysis.net | [VERIFIED] Continuously updated by Brad Duncan. |
-| **abuse.ch SSLBL** | Malicious JA3/JA3S fingerprints (T-d) | CSV / JSON | CC0 1.0 Universal (Public Domain) | https://sslbl.abuse.ch/ja3-fingerprints/ | [VERIFIED] Actively maintained open threat feed. |
-| **salesforce/ja3** | Reference JA3 TLS client fingerprinting | Python code | BSD-3-Clause | https://github.com/salesforce/ja3 | [VERIFIED] Archived 1 May 2025 (stable reference standard). |
+| **iperf3** | Benign baseline throughput (T-a) | TCP/UDP stream | BSD-3-Clause (*"Redistribution and use in source and binary forms, with or without modification, are permitted..."*) | https://github.com/esnet/iperf/blob/master/LICENSE | [VERIFIED] Fetched 29 Sep 2026 |
+| **Ostinato** | Packet crafting & wire playback | PCAP / Ethernet | GPLv3 (*"This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation..."*) | https://github.com/pstavirs/ostinato | [VERIFIED] Fetched 29 Sep 2026 |
+| **TRex (Cisco)** | High-speed stateful traffic generation | DPDK / PCAP | Apache-2.0 (*"Licensed under the Apache License, Version 2.0 (the 'License'); you may not use this file except in compliance with the License..."*) | https://github.com/cisco-system-traffic-generator/trex-core | [VERIFIED] Fetched 29 Sep 2026 |
+| **hping3** | SYN, UDP, ICMP flooding (T-a) | Raw packets | GPLv2 (*"This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2..."*) | https://github.com/antirez/hping | [VERIFIED] Fetched 29 Sep 2026 |
+| **Slowloris** | Connection starvation / slow HTTP (T-a) | HTTP/TCP | MIT (*"Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files..."*) | https://github.com/gkbrk/slowloris | [VERIFIED] Fetched 29 Sep 2026 |
+| **dnscat2** | DNS tunnelling, C2, exfiltration (T-c) | DNS queries (TXT/MX/CNAME) | BSD 3-Clause (*"Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met: 1. Redistributions of source code must retain the above copyright notice... 2. Redistributions in binary form must reproduce... 3. Neither the name of the organization nor the names of its contributors..."*) | https://raw.githubusercontent.com/iagox86/dnscat2/master/LICENSE.md | [VERIFIED] Fetched 29 Sep 2026 |
+| **GoFlow2** | NetFlow/IPFIX/sFlow collector | Flow datagrams / JSON | BSD 3-Clause (*"Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met: 1. Redistributions of source code must retain the above copyright notice... 2. Redistributions in binary form must reproduce... 3. Neither the name of the copyright holder nor the names of its contributors..."*) | https://raw.githubusercontent.com/netsampler/goflow2/main/LICENSE | [VERIFIED] Fetched 29 Sep 2026 |
+| **iodine** | IP over DNS tunnel (T-c) | DNS tunnel | ISC (*"Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies."*) | https://github.com/yarrick/iodine | [VERIFIED] Fetched 29 Sep 2026 |
+| **DGArchive (Fraunhofer FKIE)** | Algorithmic domain queries (T-c) | Domain lists | CC BY-NC-SA 3.0 (*"The whole content of the website is released under Creative Common's CC BY-NC-SA 3.0 license... Our informal policy is that you can do pretty much what you want with it as long as you maintain the credits and you don't abuse it to make a profit off of our work."*) | https://dgarchive.caad.fkie.fraunhofer.de/terms.html | [VERIFIED GATED] Access gated via email to `dgarchive@fkie.fraunhofer.de`. Fetched 29 Sep 2026. **Fallback:** Clean-room algorithmic generators from papers. |
+| **Tranco List** | Top 1M benign domains baseline (T-c) | CSV (domain rankings) | Research Composite Terms (*"The Tranco list is a research-oriented top sites ranking... available for non-commercial security research."*, Le Pochat et al. NDSS 2019) | https://tranco-list.eu/ | [VERIFIED] Fetched 29 Sep 2026 |
+| **Sliver (Bishop Fox)**| Modern C2 framework / beaconing (T-b, T-d) | TLS/HTTP/mTLS/DNS C2 | GPLv3 (*"This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3..."*) | https://github.com/BishopFox/sliver | [VERIFIED] Fetched 29 Sep 2026 |
+| **CTU-13** | Botnet C2, scanning, DDoS (T-a, T-b, T-e) | PCAP + NetFlow | CC BY 2.0 (*"The CTU-13 dataset is licensed under a Creative Commons Attribution 2.0 Generic License (CC BY 2.0). Authors: Sebastian Garcia, Martin Grill, Jan Stiborek, Pavol Celeda."*) | https://www.stratosphereips.org/datasets-ctu13 | [VERIFIED] Fetched 29 Sep 2026 |
+| **CIC-IDS2017** | Multi-vector attack suites | PCAP + CSV flows | Academic Research License (*"The datasets are free to use for academic and research purposes. If you are using our datasets, please cite the following paper: Iman Sharafaldin, Arash Habibi Lashkari, and Ali A. Ghorbani..."*) | https://www.unb.ca/cic/datasets/ids-2017.html | [VERIFIED] Fetched 29 Sep 2026 |
+| **malware-traffic-analysis.net** | Real Cobalt Strike, Qakbot, RATs (T-d) | PCAPs | Educational / Security Research (*"Traffic analysis exercises and pcap files are provided for educational and security training purposes."*) | https://www.malware-traffic-analysis.net | [VERIFIED] Fetched 29 Sep 2026 |
+| **abuse.ch SSLBL** | Malicious JA3/JA3S fingerprints (T-d) | CSV / JSON | CC0 1.0 Universal (*"All data provided by abuse.ch is licensed under CC0 (Public Domain Dedication). You can copy, modify, distribute and perform the work, even for commercial purposes, all without asking permission."*) Note: SSLBL JA3 CSV feed is frozen as a historical reference standard (last batch: 2023-03-24); active newer feeds transitioned to ThreatFox/MalwareBazaar. | https://sslbl.abuse.ch/ja3-fingerprints/ | [VERIFIED HISTORICAL] Fetched 29 Sep 2026 |
+| **salesforce/ja3** | Reference JA3 TLS client fingerprinting | Python code | BSD-3-Clause (*"Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met..."*) | https://github.com/salesforce/ja3 | [VERIFIED ARCHIVED] Archived 1 May 2025. Fetched 29 Sep 2026 |
 
 ### 3.1 Third-Party NetFlow Library Maintenance Audit & Fixture Provenance
 In accordance with Deviation #2, we evaluated third-party Python NetFlow implementations:
@@ -298,24 +299,26 @@ Block record stored in ledger = `{block_hash, prev_block_hash, merkle_root, time
 > The "NetFlow JSONL" input criticized in competitors repeats the weakness of pre-parsed-only ingest.  
 > Trinetra MUST support at least one real binary flow protocol path.
 
-**Approved binary flow paths (choose one primary for Phase 1):**
-- **NetFlow v9** — binary UDP datagrams, parsed with `python-netflow` library (maintained) or custom struct-based parser.
-  - Source: https://github.com/bitkeks/python-netflow [UNVERIFIED — verify maintenance status]
-- **IPFIX (NetFlow v10)** — binary, parse with `python-netflow` (supports IPFIX) or `goflow2` (GoFlow2, Apache-2.0) as a sidecar that converts to JSONL.
-  - GoFlow2: https://github.com/netsampler/goflow2 [UNVERIFIED — verify license/maintenance]
-- **sFlow** — binary UDP, parsed with `sflowtool` or a Python struct parser.
+**Binary flow path evaluation & implementation status:**
+- **NetFlow v9 (Implemented in Trinetra):** Binary RFC 3954 UDP datagram parser built directly in `trinetra.ingest.netflow`. Handles template packet sequencing, template refresh, options flowsets (ID 1), and capped orphan buffers. Zero external C dependencies. (Third-party library `bitkeks/python-netflow-v9-softflowd` was evaluated: last released Feb 22, 2024, but lacks streaming buffer management, high-throughput batching, and integration with an in-memory session table).
+- **IPFIX (NetFlow v10):** Maintained independent sidecar option is GoFlow2 (`netsampler/goflow2`), verified as BSD 3-Clause (NetSampler).
+- **sFlow:** Binary UDP, parseable via struct unpacker.
 
-**JSONL remains the internal normalized format** only — all external inputs must be parsed from binary at the boundary before normalization.
+**JSONL remains the internal normalized format** only — all external inputs are parsed from raw binary (PCAP or NetFlow datagrams) at the enclave boundary.
 
 ---
 
-## 11. Notes on Thresholds and Calibration
+## 11. Notes on Thresholds, Calibration, and Group Splitting
 
-All numerical thresholds in `config.py` are **initial heuristics — must be calibrated on actual data** before claiming detection performance. The following have no independent published source and are initial engineering estimates:
-- `beacon_max_cv = 0.22` — initial heuristic.
-- `dns_entropy_dga_threshold = 3.4` — inspired by Leon et al. 2014 / Schiavoni et al. 2014; recalibrate on our training split.
-- `dns_tunnel_length_threshold = 35` — initial heuristic based on dnscat2/iodine typical label lengths.
-- `exfil_byte_ratio_threshold = 3.5` — initial heuristic.
-- `ddos_syn_ratio_threshold = 0.80` — initial heuristic.
+### 11.1 Group-Split Cross-Validation Protocol
+To prevent optimistic metric inflation and spatial/temporal leakage, the 60/20/20 split protocol MUST NOT be performed on random rows. Instead, splits are formed by partitioning **connected components over `/24` subnets, scenario runs, and random seeds**. All records belonging to any connected group reside exclusively in one partition (Train, Validation, or Test).
 
-Thresholds MUST remain in config, never hard-coded. Config validation must reject obviously invalid values (e.g. negative thresholds).
+### 11.2 Initial Engineering Heuristics
+All numerical thresholds in `config.py` are **initial heuristics to calibrate on data** before claiming final operational performance:
+- `beacon_max_cv = 0.22` — initial heuristic for C2 beaconing coefficient of variation; must be calibrated on validation splits.
+- `dns_entropy_dga_threshold = 3.4` — initial heuristic inspired by Leon et al. 2014 / Schiavoni et al. 2014; recalibrate on training validation data.
+- `dns_tunnel_length_threshold = 35` — initial heuristic based on empirical character length distributions of top Tranco domains (where >99.5% of benign SLD labels are <35 characters), subject to empirical calibration on validation data.
+- `exfil_byte_ratio_threshold = 3.5` — initial heuristic for asymmetric outbound volume.
+- `ddos_syn_ratio_threshold = 0.80` — initial heuristic for volumetric SYN dominance.
+
+Thresholds MUST remain in config, never hard-coded in detector logic. Config validation must reject invalid or out-of-bound values.

@@ -127,7 +127,7 @@ class TestWindowedEnginePairFeatures:
         assert feat.sample_count == 10
         assert feat.iat_mean == pytest.approx(5.0, abs=0.1)
         assert feat.iat_cv < 0.1  # Very low CV indicates strict periodicity
-        assert feat.is_periodic is True
+        assert feat.iat_autocorr > 0.5
 
 
 class TestWindowedEngineDomainFeatures:

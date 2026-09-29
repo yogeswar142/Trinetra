@@ -1,0 +1,90 @@
+{
+  "benchmark_version": "v3",
+  "benchmark_scope": "Phase 2a: Ingest + FlowTable + WindowedFeatureEngine (NO detector models, NO inference)",
+  "cadence_commitment": "A full-pipeline benchmark will be executed and recorded at the end of every sub-phase.",
+  "system_telemetry": {
+    "timestamp_utc": "2026-09-29T17:01:02.868964+00:00",
+    "platform_system": "Windows",
+    "platform_release": "10",
+    "platform_machine": "AMD64",
+    "processor": "ARMv8 (64-bit) Family 8 Model 2 Revision 101, Qualcomm Technologies Inc",
+    "cpu_count_logical": 6,
+    "python_version": "3.11.9",
+    "python_architecture": "x64 Python emulated on ARM64 Windows (Snapdragon ARMv8, platform.machine()='AMD64')",
+    "power_plugged": false,
+    "battery_percent": 62,
+    "power_plan": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+    "ram_total_gb": 15.63,
+    "ram_available_gb": 3.42
+  },
+  "feature_engine_capabilities": {
+    "dns_parsing": "Domain query names, query types, lengths, Shannon entropy",
+    "tls_parsing": "JA3 client hello md5, JA3S server hello md5, SNI, PST sequence",
+    "quic_parsing": "Long/short header parsing without key derivation (passive zero-decrypt)",
+    "entropy_calculation": "Character Shannon entropy on DNS labels and IP distributions"
+  },
+  "realistic_mixed_500k": {
+    "throughput": {
+      "repetitions": 2,
+      "packets_processed": 500000,
+      "packets_per_second": {
+        "median": 36719.22,
+        "min": 36381.13,
+        "max": 36719.22,
+        "raw": [
+          36719.22,
+          36381.13
+        ]
+      },
+      "throughput_mbps": {
+        "median": 189.95,
+        "min": 188.2,
+        "max": 189.95
+      }
+    },
+    "latency": {
+      "definition_a_service_time_per_packet": {
+        "count": 30000,
+        "mean_us": 24.342,
+        "p50_us": 20.6,
+        "p95_us": 47.5,
+        "p99_us": 61.2,
+        "p99_9_us": 198.0,
+        "max_us": 5521.2
+      },
+      "definition_b_ingest_to_feature_ready_lag": {
+        "count": 30000,
+        "mean_us": 30.755,
+        "p50_us": 26.2,
+        "p95_us": 62.2,
+        "p99_us": 77.0,
+        "p99_9_us": 228.8,
+        "max_us": 5610.2
+      }
+    },
+    "memory": {
+      "packets_processed": 50000,
+      "rss_start_mb": 303.14,
+      "rss_peak_mb": 308.03,
+      "rss_end_mb": 308.03,
+      "rss_delta_mb": 4.88
+    }
+  },
+  "eviction_stress_test": {
+    "packets_injected": 20000,
+    "configured_max_dst_keys": 500,
+    "configured_max_src_keys": 500,
+    "final_active_dst_keys": 254,
+    "final_active_src_keys": 500,
+    "evictions_enforced": {
+      "dst": 0,
+      "src": 19500,
+      "pair": 19000,
+      "domain": 0,
+      "tls": 0
+    },
+    "rss_start_mb": 304.71,
+    "rss_end_mb": 306.38,
+    "memory_plateau_preserved": true
+  }
+}

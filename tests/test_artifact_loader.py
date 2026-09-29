@@ -114,3 +114,33 @@ class TestArtifactLoaderSecurity:
 
         with pytest.raises(ManifestSignatureError, match="Cryptographic verification failed"):
             safe_load_artifact(artifact_path, manifest_path, untrusted_pub)
+
+    def test_environment_version_mismatch_raises(self, tmp_path: Path, keypair) -> None:
+        from trinetra.ml.artifact_loader import EnvironmentVersionMismatchError
+
+        priv_key, pub_key = keypair
+        artifact_path = tmp_path / "model.joblib"
+        manifest_path = tmp_path / "models_manifest.json"
+
+        joblib.dump({"key": "val"}, artifact_path)
+        sha256 = compute_file_sha256(artifact_path)
+        # Fabricate an old Python version in manifest
+        fake_runtime = {
+            "python_version": "3.8.10",
+            "numpy_version": "1.20.0",
+            "sklearn_version": "0.24.2",
+            "lightgbm_version": None,
+        }
+        manifest_data = create_and_sign_manifest(
+            artifacts=[{"filename": artifact_path.name, "sha256": sha256}],
+            private_key=priv_key,
+            custom_runtime=fake_runtime,
+        )
+        manifest_path.write_text(json.dumps(manifest_data), encoding="utf-8")
+
+        with pytest.raises(EnvironmentVersionMismatchError, match="Python runtime mismatch"):
+            safe_load_artifact(artifact_path, manifest_path, pub_key, allow_version_mismatch=False)
+
+        # But with allow_version_mismatch=True it succeeds
+        loaded = safe_load_artifact(artifact_path, manifest_path, pub_key, allow_version_mismatch=True)
+        assert loaded == {"key": "val"}

@@ -92,7 +92,10 @@ OFFLINE_CTU13_SAMPLE_FLOWS = """StartTime,Dur,Proto,SrcAddr,Sport,Dir,DstAddr,Dp
 
 DATASET_SPECS = [
     {
-        "name": "Tranco Top Benign Domains",
+        "name": "Tranco Top Benign Domains (Curated Sample Slice)",
+        "provenance": "Curated 20-domain sample slice extracted from Tranco Top 1M list (List ID 7N8V, 16 MB upstream zip).",
+        "upstream_url": "https://tranco-list.eu/download/7N8V",
+        "is_real_raw_slice": False,  # Sample slice, not full raw dump
         "data_file": BASELINES_DIR / "tranco_top1k.csv",
         "license_file": BASELINES_DIR / "TRANCO_LICENSE.txt",
         "license_content": TRANCO_LICENSE,
@@ -100,7 +103,10 @@ DATASET_SPECS = [
         "max_size_bytes": 10 * 1024 * 1024,  # 10 MB limit
     },
     {
-        "name": "abuse.ch SSLBL JA3 Feed",
+        "name": "abuse.ch SSLBL JA3 Feed (Curated Sample Slice)",
+        "provenance": "Curated 5-fingerprint sample slice extracted from abuse.ch SSLBL feed (~250 KB upstream CSV).",
+        "upstream_url": "https://sslbl.abuse.ch/blacklist/ja3_fingerprints.csv",
+        "is_real_raw_slice": False,  # Curated sample slice
         "data_file": BASELINES_DIR / "sslbl_ja3.csv",
         "license_file": BASELINES_DIR / "SSLBL_LICENSE.txt",
         "license_content": SSLBL_JA3_LICENSE,
@@ -108,7 +114,10 @@ DATASET_SPECS = [
         "max_size_bytes": 10 * 1024 * 1024,
     },
     {
-        "name": "CTU-13 Sample Flows (Scenario 10)",
+        "name": "CTU-13 Schema Sample (Generated Reference Slice)",
+        "provenance": "Generated reference schema slice modeled on CTU-13 Scenario 10 (capture20110818.binetflow, 2.1 GB upstream). Relabeled as generated fixture for schema validation; NOT raw CTU-13 data.",
+        "upstream_url": "https://mcfp.felk.cvut.cz/publicDatasets/CTU-Malware-Capture-Botnet-51/capture20110818.binetflow",
+        "is_real_raw_slice": False,  # Generated reference schema fixture
         "data_file": BASELINES_DIR / "ctu13_sample_flows.csv",
         "license_file": BASELINES_DIR / "CTU13_LICENSE.txt",
         "license_content": CTU13_LICENSE,
@@ -118,10 +127,12 @@ DATASET_SPECS = [
 ]
 
 
-def seed_datasets(force: bool = False) -> dict[str, str]:
+def seed_datasets(force: bool = False) -> dict[str, Any]:
     """
     Ensure all baseline datasets and license texts are present and integrity-verified.
-    Returns dictionary of dataset names to file paths and SHA-256 checksums.
+    Note: SHA-256 verification checks against the local canonical snapshot to prevent
+    in-enclave corruption or tampering. Full multi-gigabyte raw captures must be fetched
+    using external download scripts per the <1GB rule.
     """
     manifest: dict[str, str] = {}
 

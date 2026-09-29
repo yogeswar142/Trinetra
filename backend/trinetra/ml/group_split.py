@@ -123,6 +123,69 @@ class StrictGroupSplitter:
         self.test_ratio = test_ratio
         self.seed = random_seed
 
+    @staticmethod
+    def compute_connected_groups(
+        attribute_tuples: Sequence[Tuple[Any, ...]],
+    ) -> list[int]:
+        """
+        Computes connected components across simultaneous grouping constraints
+        (e.g. /24 subnet, scenario run ID, and random seed).
+
+        If sample A and sample B share ANY attribute, they belong to the same component.
+        Raises ValueError if the data collapses into fewer than 3 connected components.
+        """
+        n = len(attribute_tuples)
+        if n == 0:
+            return []
+
+        # Union-Find
+        parent = list(range(n))
+
+        def find(i: int) -> int:
+            path = []
+            while parent[i] != i:
+                path.append(i)
+                i = parent[i]
+            for node in path:
+                parent[node] = i
+            return i
+
+        def union(i: int, j: int) -> None:
+            root_i = find(i)
+            root_j = find(j)
+            if root_i != root_j:
+                parent[root_i] = root_j
+
+        # Link rows that share any attribute value
+        k_attrs = len(attribute_tuples[0])
+        for k in range(k_attrs):
+            val_to_first_row: dict[Any, int] = {}
+            for row_idx, row in enumerate(attribute_tuples):
+                val = row[k]
+                if val in val_to_first_row:
+                    union(row_idx, val_to_first_row[val])
+                else:
+                    val_to_first_row[val] = row_idx
+
+        # Map root components to contiguous IDs
+        root_to_id: dict[int, int] = {}
+        component_ids: list[int] = []
+        for i in range(n):
+            r = find(i)
+            if r not in root_to_id:
+                root_to_id[r] = len(root_to_id)
+            component_ids.append(root_to_id[r])
+
+        n_components = len(root_to_id)
+        if n_components < 3:
+            raise ValueError(
+                f"Group Constraint Collapse: Lab data collapsed into {n_components} connected component(s) "
+                f"(< 3 required for disjoint train/val/test partitions). "
+                f"Subnets, runs, or seeds overlap heavily across samples."
+            )
+
+        return component_ids
+
     def split(
         self,
         records: Sequence[Any],
@@ -163,3 +226,29 @@ class StrictGroupSplitter:
         test_idx = [i for i, g in enumerate(groups) if g in test_g]
 
         return train_idx, val_idx, test_idx
+
+
+def probe_scenario_leakage(
+    features: np.ndarray,
+    scenario_labels: Sequence[Any],
+    max_allowed_accuracy: float = 0.90,
+) -> float:
+    """
+    Evaluates whether the feature representation trivially leaks the scenario identity.
+    Trains a shallow DecisionTreeClassifier to predict scenario from features.
+    If cross-validated accuracy exceeds max_allowed_accuracy, raises ValueError.
+    """
+    from sklearn.tree import DecisionTreeClassifier
+    from sklearn.model_selection import cross_val_score
+
+    clf = DecisionTreeClassifier(max_depth=3, random_state=42)
+    scores = cross_val_score(clf, features, scenario_labels, cv=min(3, len(set(scenario_labels))))
+    mean_acc = float(np.mean(scores))
+    if mean_acc > max_allowed_accuracy:
+        raise ValueError(
+            f"Scenario Leakage Detected: Probe classifier predicted scenario identity with "
+            f"{mean_acc*100:.1f}% accuracy (> {max_allowed_accuracy*100:.1f}% threshold). "
+            f"Features contain topological or artifact shortcuts."
+        )
+    return mean_acc
+

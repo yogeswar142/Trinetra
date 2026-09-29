@@ -231,18 +231,22 @@ Public intrusion detection datasets contain documented methodological flaws that
   - Reliability Curves plotting observed positive fraction against mean predicted confidence.
 
 ### 3.5 Independent Held-Out Generators & Data Availability
+> [!IMPORTANT]
+> **SIMULATION PROVENANCE GUARANTEE:**
+> All in-repo generators simulating attack behaviors (e.g. dnscat2, iodine, Sliver, uTLS, Slowloris, hping3, nmap) are strictly designated and labeled as **"simulated, not independent"**. They serve as deterministic reproducibility fixtures and must never be represented or claimed as external independent tool executions. Independent captures require external execution via the testbed runbook (`docs/capture_runbook.md`).
+
 For each threat category, detectors will be evaluated against attack generators completely unseen during training:
 
-| Threat | Held-Out Generator | Execution Environment / Operator | Fallback if Tool Unavailable |
+| Threat | Held-Out Generator | Execution Environment / Operator | Fallback if Tool Unavailable (Labeled: Simulated, Not Independent) |
 |---|---|---|---|
-| **T-a (DDoS)** | TRex stateful generator / hping3 | Linux (WSL2/teammate testbed) | Built-in deterministic SYN/UDP flood simulator (`SCENARIO_DDOS_SYN_FLOOD`) |
-| **T-a (Slowloris)** | Slowloris HTTP starvation script | Python / Linux / Windows | Built-in slow HTTP header starvation generator |
-| **T-b (Beaconing)** | Sliver C2 (with 50% random jitter) | Linux / Go runtime (teammate VM) | Built-in deterministic beaconing simulator (`SCENARIO_BEACONING`) with jitter |
-| **T-c (DNS Tunnel)** | dnscat2 / iodine base32 | Linux / Ruby (teammate VM) | Built-in DNS tunnel simulator (`SCENARIO_DNS_TUNNEL`) emitting valid TXT queries |
-| **T-c (DGA)** | Clean-room algorithmic DGA generators | Pure Python (in-repo) | Algorithmic generators from papers (Conficker, Cryptolocker, Bamital, Doxrem) |
-| **T-d (Encrypted TLS)** | Custom uTLS client / MTA PCAPs | Linux / Windows (curl/quiche) | Brad Duncan MTA PCAPs (`malware-traffic-analysis.net`) and synthetic TLS fixture |
-| **T-e (Scanning)** | Nmap slow scan (`-T1` Sneaky) | Linux / Windows Nmap CLI | Built-in port scan simulator (`SCENARIO_PORT_SCAN`) |
-| **T-f (Exfiltration)** | Encrypted trickle upload script | Python / Windows / Linux | Built-in large-payload exfiltration simulator (`SCENARIO_EXFIL`) |
+| **T-a (DDoS)** | TRex stateful generator / hping3 | Linux (WSL2/teammate testbed) | Built-in deterministic SYN/UDP flood simulator (`SCENARIO_DDOS_SYN_FLOOD`) [Simulated, not independent] |
+| **T-a (Slowloris)** | Slowloris HTTP starvation script | Python / Linux / Windows | Built-in slow HTTP header starvation generator [Simulated, not independent] |
+| **T-b (Beaconing)** | Sliver C2 (with 50% random jitter) | Linux / Go runtime (teammate VM) | Built-in deterministic beaconing simulator (`SCENARIO_BEACONING`) [Simulated, not independent] |
+| **T-c (DNS Tunnel)** | dnscat2 / iodine base32 | Linux / Ruby (teammate VM) | Built-in DNS tunnel simulator (`SCENARIO_DNS_TUNNEL`) [Simulated, not independent] |
+| **T-c (DGA)** | Clean-room algorithmic DGA generators | Pure Python (in-repo) | Algorithmic generators from papers (Conficker, Cryptolocker, Bamital) [Simulated, not independent] |
+| **T-d (Encrypted TLS)** | Custom uTLS client / MTA PCAPs | Linux / Windows (curl/quiche) | Brad Duncan MTA PCAPs and synthetic TLS fixture [Simulated, not independent] |
+| **T-e (Scanning)** | Nmap slow scan (`-T1` Sneaky) | Linux / Windows Nmap CLI | Built-in port scan simulator (`SCENARIO_PORT_SCAN`) [Simulated, not independent] |
+| **T-f (Exfiltration)** | Encrypted trickle upload script | Python / Windows / Linux | Built-in large-payload exfiltration simulator (`SCENARIO_EXFIL`) [Simulated, not independent] |
 
 ### 3.6 Real TLS & QUIC Captures for T-d
 To ensure robust malware classification in encrypted sessions without decryption:
