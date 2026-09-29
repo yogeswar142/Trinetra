@@ -11,11 +11,17 @@ classified correctly (not falsely LATERAL).
 """
 from __future__ import annotations
 
+import functools
 import ipaddress
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+
+@functools.lru_cache(maxsize=128)
+def _parse_subnets_cached(subnets_tuple: tuple[str, ...]) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+    return [ipaddress.ip_network(s, strict=False) for s in subnets_tuple]
 
 
 # ---------------------------------------------------------------------------
@@ -132,14 +138,8 @@ class EnclaveConfig:
         self,
         subnets: list[str],
     ) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
-        """Parse subnet strings into network objects."""
-        nets: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
-        for s in subnets:
-            try:
-                nets.append(ipaddress.ip_network(s, strict=False))
-            except ValueError as exc:
-                raise ValueError(f"Invalid subnet in config: {s!r}") from exc
-        return nets
+        """Parse subnet strings into network objects (cached)."""
+        return _parse_subnets_cached(tuple(subnets))
 
     def internal_networks(
         self,

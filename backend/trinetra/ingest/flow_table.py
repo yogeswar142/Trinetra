@@ -30,7 +30,7 @@ from trinetra.schemas import Direction, FlowEvent, TcpState
 # ---------------------------------------------------------------------------
 # Bidirectional Flow Key
 # ---------------------------------------------------------------------------
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class BidirectionalFlowKey:
     """
     Canonical 5-tuple identifier for bidirectional flow aggregation.
@@ -61,7 +61,7 @@ class BidirectionalFlowKey:
 # ---------------------------------------------------------------------------
 # Flow Record
 # ---------------------------------------------------------------------------
-@dataclass
+@dataclass(slots=True)
 class FlowRecord:
     """
     Stateful aggregated flow session record.
@@ -155,6 +155,7 @@ class FlowTable:
         self.stats = FlowTableStats()
         self.flows: OrderedDict[BidirectionalFlowKey, FlowRecord] = OrderedDict()
         self.last_observed_time: float = 0.0
+        self._last_expiry_check: float = 0.0
 
     def process_event(self, event: FlowEvent) -> tuple[FlowRecord, list[FlowRecord]]:
         """
@@ -172,7 +173,12 @@ class FlowTable:
 
         # 1. Deterministic Timestamp-Driven Expiry
         # Expire any flows whose idle duration exceeds idle_timeout based on event.timestamp
-        expired = self._check_expiry(current_ts)
+        # Evaluated when time advances by >= 1.0s or table is approaching capacity limit
+        if (current_ts - self._last_expiry_check >= 1.0) or (len(self.flows) >= self.max_flows * 0.95):
+            expired = self._check_expiry(current_ts)
+            self._last_expiry_check = current_ts
+        else:
+            expired = []
 
         # 2. Get or create flow record
         key, _ = BidirectionalFlowKey.from_endpoints(

@@ -17,7 +17,7 @@ from typing import Optional
 from trinetra.schemas import TcpState
 
 
-@dataclass
+@dataclass(slots=True)
 class DirectionTcpState:
     """State tracking for one half of a TCP connection."""
     next_seq: int = 0
@@ -32,7 +32,7 @@ class DirectionTcpState:
     seen_seqs: set[int] = field(default_factory=set)
 
 
-@dataclass
+@dataclass(slots=True)
 class PassiveTcpTracker:
     """
     Passive state tracker for a single bidirectional TCP flow session.

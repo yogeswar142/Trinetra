@@ -36,8 +36,8 @@ test:  ## Run all tests (includes no-transmit safety check)
 test-cov:  ## Run tests with coverage report
 	$(PYTEST) $(TESTS) --cov=$(BACKEND)/trinetra --cov-report=term-missing --cov-report=html:coverage_html
 
-benchmark:  ## Run Phase 1 pipeline benchmark (produces JSON report)
-	$(PYTHON) scripts/benchmark_pipeline.py
+benchmark:  ## Run Phase 1.5 pipeline benchmark v2 (produces JSON report)
+	$(PYTHON) scripts/benchmark_v2.py
 
 docker-up:  ## Start docker-compose development environment
 	docker compose up -d

@@ -21,6 +21,7 @@ env/
 data/ledger/*.jsonl
 data/signatures/*.key
 data/fixtures/*benchmark*.pcap
+data/fixtures/realistic_mixed_500k.pcap
 !data/signatures/.gitkeep
 !data/ledger/.gitkeep
 !data/fixtures/.gitkeep

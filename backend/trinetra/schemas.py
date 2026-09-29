@@ -16,6 +16,7 @@ All other fields are strongly typed but optional for forward compatibility.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
@@ -276,6 +277,74 @@ class FlowEvent(BaseModel):
 
     # Ingest source metadata
     ingest_source: str = Field("pcap", description="Ingest source: 'pcap', 'netflow_v9', 'ipfix'")
+
+
+@dataclass(slots=True)
+class PacketEvent:
+    """
+    Lightweight, slots-backed network packet event used in the performance-critical
+    ingest and flow-tracking hot paths. Eliminates Pydantic instantiation overhead in loops.
+    Duck-typed with FlowEvent.
+    """
+    timestamp: float
+    src_ip: str
+    src_port: int
+    dst_ip: str
+    dst_port: int
+    protocol: str
+    length: int
+    tcp_flags: Optional[dict[str, bool]] = None
+    tcp_seq: Optional[int] = None
+    tcp_ack: Optional[int] = None
+    dns_query: Optional[str] = None
+    dns_qtype: Optional[str] = None
+    dns_is_response: Optional[bool] = None
+    dns_answer_count: Optional[int] = None
+    tls_ja3: Optional[str] = None
+    tls_ja3s: Optional[str] = None
+    tls_sni: Optional[str] = None
+    tls_ja3_string: Optional[str] = None
+    tls_cert_self_signed: Optional[bool] = None
+    tls_cert_validity_days: Optional[int] = None
+    tls_cert_subject_cn: Optional[str] = None
+    quic_version: Optional[int] = None
+    quic_conn_id_len: Optional[int] = None
+    quic_packet_type: Optional[str] = None
+    payload_entropy: Optional[float] = None
+    direction: Optional[Direction] = None
+    ingest_source: str = "pcap"
+
+    def to_flow_event(self) -> FlowEvent:
+        """Convert to Pydantic FlowEvent when validated schema export is required."""
+        return FlowEvent.model_construct(
+            timestamp=self.timestamp,
+            src_ip=self.src_ip,
+            src_port=self.src_port,
+            dst_ip=self.dst_ip,
+            dst_port=self.dst_port,
+            protocol=self.protocol,
+            length=self.length,
+            tcp_flags=self.tcp_flags,
+            tcp_seq=self.tcp_seq,
+            tcp_ack=self.tcp_ack,
+            dns_query=self.dns_query,
+            dns_qtype=self.dns_qtype,
+            dns_is_response=self.dns_is_response,
+            dns_answer_count=self.dns_answer_count,
+            tls_ja3=self.tls_ja3,
+            tls_ja3s=self.tls_ja3s,
+            tls_sni=self.tls_sni,
+            tls_ja3_string=self.tls_ja3_string,
+            tls_cert_self_signed=self.tls_cert_self_signed,
+            tls_cert_validity_days=self.tls_cert_validity_days,
+            tls_cert_subject_cn=self.tls_cert_subject_cn,
+            quic_version=self.quic_version,
+            quic_conn_id_len=self.quic_conn_id_len,
+            quic_packet_type=self.quic_packet_type,
+            payload_entropy=self.payload_entropy,
+            direction=self.direction,
+            ingest_source=self.ingest_source,
+        )
 
 
 # ---------------------------------------------------------------------------

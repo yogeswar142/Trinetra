@@ -30,7 +30,7 @@ import dpkt
 
 from trinetra.features.entropy import shannon_entropy
 from trinetra.features.tls_parser import parse_client_hello, parse_server_hello
-from trinetra.schemas import FlowEvent
+from trinetra.schemas import FlowEvent, PacketEvent
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +141,7 @@ class PcapIngest:
                 self.stats.packets_parsed += 1
                 yield event
 
-    def _parse_ethernet_packet(self, ts: float, buf: bytes) -> FlowEvent | None:
+    def _parse_ethernet_packet(self, ts: float, buf: bytes) -> FlowEvent | PacketEvent | None:
         """Parse raw Ethernet frame into normalized FlowEvent."""
         if len(buf) < 14:
             self.stats.packets_dropped_unsupported_link += 1
@@ -237,7 +237,7 @@ class PcapIngest:
 
         elif proto_num in (dpkt.ip.IP_PROTO_ICMP, 58):  # ICMP or ICMPv6
             self.stats.icmp_packets += 1
-            return FlowEvent(
+            return PacketEvent(
                 timestamp=ts,
                 src_ip=src_ip,
                 src_port=0,
@@ -249,7 +249,7 @@ class PcapIngest:
             )
         else:
             # Other IP protocol (e.g. GRE, ESP, IGMP)
-            return FlowEvent(
+            return PacketEvent(
                 timestamp=ts,
                 src_ip=src_ip,
                 src_port=0,
@@ -267,12 +267,12 @@ class PcapIngest:
         dst_ip: str,
         data: bytes | dpkt.tcp.TCP,
         total_len: int,
-    ) -> FlowEvent:
+    ) -> PacketEvent:
         """Parse TCP header, flags, and application-layer TLS handshakes."""
         try:
             tcp = data if isinstance(data, dpkt.tcp.TCP) else dpkt.tcp.TCP(data)
         except Exception:
-            return FlowEvent(
+            return PacketEvent(
                 timestamp=ts,
                 src_ip=src_ip,
                 src_port=0,
@@ -302,24 +302,22 @@ class PcapIngest:
 
         # Check for TLS Handshake payload: Type 22 (Handshake) at byte 0
         payload = bytes(tcp.data)
-        if len(payload) >= 5 and payload[0] == 22:
+        if len(payload) >= 6 and payload[0] == 22:
             protocol = "TLS"
             # Handshake Type 1 = ClientHello
-            if len(payload) >= 6 and payload[5] == 1:
+            if payload[5] == 1:
                 client_hello = parse_client_hello(payload)
                 if client_hello:
                     tls_ja3 = client_hello.get("ja3_hash")
                     tls_sni = client_hello.get("server_name")
                     tls_ja3_string = client_hello.get("ja3_string")
             # Handshake Type 2 = ServerHello
-            elif len(payload) >= 6 and payload[5] == 2:
+            elif payload[5] == 2:
                 server_hello = parse_server_hello(payload)
                 if server_hello:
                     tls_ja3s = server_hello.get("ja3s_hash")
 
-        ent = shannon_entropy(payload) if payload else None
-
-        return FlowEvent(
+        return PacketEvent(
             timestamp=ts,
             src_ip=src_ip,
             src_port=tcp.sport,
@@ -334,7 +332,7 @@ class PcapIngest:
             tls_ja3s=tls_ja3s,
             tls_sni=tls_sni,
             tls_ja3_string=tls_ja3_string,
-            payload_entropy=ent,
+            payload_entropy=None,
             ingest_source="pcap",
         )
 
@@ -345,12 +343,12 @@ class PcapIngest:
         dst_ip: str,
         data: bytes | dpkt.udp.UDP,
         total_len: int,
-    ) -> FlowEvent:
+    ) -> PacketEvent:
         """Parse UDP header, DNS queries, and QUIC initial metadata."""
         try:
             udp = data if isinstance(data, dpkt.udp.UDP) else dpkt.udp.UDP(data)
         except Exception:
-            return FlowEvent(
+            return PacketEvent(
                 timestamp=ts,
                 src_ip=src_ip,
                 src_port=0,
@@ -402,9 +400,7 @@ class PcapIngest:
             except Exception:
                 pass
 
-        ent = shannon_entropy(payload) if payload else None
-
-        return FlowEvent(
+        return PacketEvent(
             timestamp=ts,
             src_ip=src_ip,
             src_port=udp.sport,
@@ -419,6 +415,6 @@ class PcapIngest:
             quic_version=quic_version,
             quic_conn_id_len=quic_conn_id_len,
             quic_packet_type=quic_packet_type,
-            payload_entropy=ent,
+            payload_entropy=None,
             ingest_source="pcap",
         )
