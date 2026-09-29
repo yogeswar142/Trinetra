@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0-phase2b",
+  "runtime_environment": {
+    "python_version": "3.11.9",
+    "numpy_version": "2.4.6",
+    "sklearn_version": "1.9.1",
+    "lightgbm_version": null
+  },
+  "artifacts": [
+    {
+      "filename": "t_a_ddos.joblib",
+      "threat_class": "T_A_DDOS",
+      "sha256": "45f8220b05ed55857ebe3b26917ca56dc903195290a3dd5b9f17b57c316b0e4a",
+      "model_type": "RandomForestClassifier",
+      "calibrated": true
+    },
+    {
+      "filename": "t_e_portscan.joblib",
+      "threat_class": "T_E_PORT_SCAN",
+      "sha256": "a41bb33cf261573ec0ad104bf98bb440a25b8bcf1a3436fd25498664684261c3",
+      "model_type": "RandomForestClassifier",
+      "calibrated": true
+    },
+    {
+      "filename": "t_f_exfil.joblib",
+      "threat_class": "T_F_EXFIL",
+      "sha256": "00c2aaff82324a8f15ade7d270e6c3ff1e5ab1a9d2b3018670a02446b8bb49b6",
+      "model_type": "RandomForestClassifier",
+      "calibrated": true
+    }
+  ],
+  "signature_hex": "546a1197af0015f8606fd680132655aabe53871282af5a3ed4633d5076aedd3ec45728d532c7beceb4845591a4374067f8e6ca12905ff01bdbea997171699502"
+}
