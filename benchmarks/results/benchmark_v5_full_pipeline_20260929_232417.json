@@ -1,0 +1,85 @@
+{
+  "benchmark_version": "5.0.0-phase2c",
+  "description": "Full End-to-End Trinetra Pipeline: Ingest + FlowTable + FeatureEngine + 5 Threat Detectors (T-a, T-e, T-b, T-c) + Deduplicator + Merkle Ledger",
+  "telemetry": {
+    "timestamp_utc": "2026-09-29T17:50:08.974923+00:00",
+    "platform_system": "Windows",
+    "platform_release": "10",
+    "platform_machine": "AMD64",
+    "processor": "ARMv8 (64-bit) Family 8 Model 2 Revision 101, Qualcomm Technologies Inc",
+    "cpu_count_logical": 6,
+    "python_version": "3.11.9",
+    "python_architecture": "x64 Python emulated on ARM64 Windows (Snapdragon ARMv8, platform.machine()='AMD64')",
+    "power_plugged": false,
+    "battery_percent": 53,
+    "power_plan": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+    "ram_total_gb": 15.63,
+    "ram_available_gb": 3.63
+  },
+  "throughput": {
+    "repetitions": 2,
+    "packets_processed": 500000,
+    "alerts_by_threat_class": {
+      "PORT_SCANNING": 9,
+      "DGA_DOMAINS": 1,
+      "BOTNET_C2_BEACONING": 8,
+      "VOLUMETRIC_DDOS": 71
+    },
+    "total_alerts_emitted": 89,
+    "packets_per_second": {
+      "median": 5878.67,
+      "min": 5682.28,
+      "max": 5878.67,
+      "raw": [
+        5878.67,
+        5682.28
+      ]
+    },
+    "throughput_mbps": {
+      "median": 30.41,
+      "min": 29.39,
+      "max": 30.41
+    }
+  },
+  "latency": {
+    "packets_sampled": 30000,
+    "latency_definition_a_service_time": {
+      "count": 30000,
+      "mean_us": 45.41,
+      "p50_us": 39.9,
+      "p95_us": 78.9,
+      "p99_us": 118.6,
+      "max_us": 1788.1
+    },
+    "latency_definition_b_ingest_to_alert_lag": {
+      "count": 30000,
+      "mean_us": 2393.3,
+      "p50_us": 2085.4,
+      "p95_us": 4299.3,
+      "p99_us": 4824.8,
+      "max_us": 41022.5
+    }
+  },
+  "memory": {
+    "packets_processed": 100000,
+    "rss_start_mb": 334.4,
+    "rss_peak_mb": 337.63,
+    "rss_end_mb": 337.63,
+    "rss_delta_mb": 3.23
+  },
+  "eviction_stress": {
+    "packets_processed": 20000,
+    "elapsed_seconds": 0.1576,
+    "eviction_counts": {
+      "dst": 9500,
+      "src": 19500,
+      "pair": 19500,
+      "domain": 0,
+      "tls": 0
+    },
+    "rss_start_mb": 327.36,
+    "rss_end_mb": 328.19,
+    "rss_delta_mb": 0.84,
+    "memory_plateau_preserved": true
+  }
+}
