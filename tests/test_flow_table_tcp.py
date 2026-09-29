@@ -192,3 +192,101 @@ class TestPassiveTcpStateTracker:
         tracker = PassiveTcpTracker()
         state = tracker.process_packet(5.0, is_forward=False, tcp_flags={"SYN": False, "ACK": True}, seq=90000, ack=4000, payload_len=500)
         assert state == TcpState.HALF_OPEN_OBSERVED
+
+
+class TestCraftedTcpEdgeCasePcaps:
+    """
+    Tests asserting expected passive TCP tracking behavior against 4 disk-backed
+    crafted PCAP fixtures (duplicates, out-of-order, midstream, one-sided loss).
+    """
+
+    def test_pcap_duplicate_sequence_detection(self) -> None:
+        """Verify duplicate retransmissions in disk-backed tcp_duplicate.pcap."""
+        from pathlib import Path
+        from trinetra.ingest.pcap import PcapIngest
+
+        pcap_path = Path("data/fixtures/tcp_edge_cases/tcp_duplicate.pcap")
+        assert pcap_path.exists(), f"Fixture {pcap_path} missing"
+
+        ingest = PcapIngest()
+        table = FlowTable()
+        events = list(ingest.parse_file(pcap_path))
+        assert len(events) == 5
+
+        for ev in events:
+            table.process_event(ev)
+
+        flows = list(table.flows.values())
+        assert len(flows) == 1
+        flow = flows[0]
+        assert flow.tcp_tracker is not None
+        assert flow.tcp_tracker.state == TcpState.ESTABLISHED
+        assert flow.tcp_tracker.fwd_state.duplicate_packets >= 1
+
+    def test_pcap_out_of_order_sequence_detection(self) -> None:
+        """Verify out-of-order sequence detection in disk-backed tcp_out_of_order.pcap."""
+        from pathlib import Path
+        from trinetra.ingest.pcap import PcapIngest
+
+        pcap_path = Path("data/fixtures/tcp_edge_cases/tcp_out_of_order.pcap")
+        assert pcap_path.exists(), f"Fixture {pcap_path} missing"
+
+        ingest = PcapIngest()
+        table = FlowTable()
+        events = list(ingest.parse_file(pcap_path))
+        assert len(events) == 5
+
+        for ev in events:
+            table.process_event(ev)
+
+        flows = list(table.flows.values())
+        assert len(flows) == 1
+        flow = flows[0]
+        assert flow.tcp_tracker is not None
+        assert flow.tcp_tracker.state == TcpState.ESTABLISHED
+        assert flow.tcp_tracker.fwd_state.out_of_order_packets >= 1
+
+    def test_pcap_midstream_capture(self) -> None:
+        """Verify mid-stream session discovery in disk-backed tcp_midstream.pcap."""
+        from pathlib import Path
+        from trinetra.ingest.pcap import PcapIngest
+
+        pcap_path = Path("data/fixtures/tcp_edge_cases/tcp_midstream.pcap")
+        assert pcap_path.exists(), f"Fixture {pcap_path} missing"
+
+        ingest = PcapIngest()
+        table = FlowTable()
+        events = list(ingest.parse_file(pcap_path))
+        assert len(events) == 2
+
+        for ev in events:
+            table.process_event(ev)
+
+        flows = list(table.flows.values())
+        assert len(flows) == 1
+        flow = flows[0]
+        assert flow.tcp_tracker is not None
+        assert flow.tcp_tracker.state == TcpState.MIDSTREAM_ESTABLISHED
+
+    def test_pcap_one_sided_loss(self) -> None:
+        """Verify one-sided / asymmetric session in disk-backed tcp_one_sided_loss.pcap."""
+        from pathlib import Path
+        from trinetra.ingest.pcap import PcapIngest
+
+        pcap_path = Path("data/fixtures/tcp_edge_cases/tcp_one_sided_loss.pcap")
+        assert pcap_path.exists(), f"Fixture {pcap_path} missing"
+
+        ingest = PcapIngest()
+        table = FlowTable()
+        events = list(ingest.parse_file(pcap_path))
+        assert len(events) == 2
+
+        for ev in events:
+            table.process_event(ev)
+
+        flows = list(table.flows.values())
+        assert len(flows) == 1
+        flow = flows[0]
+        assert flow.tcp_tracker is not None
+        # Since only reverse/asymmetric packets arrived without handshake, state is MIDSTREAM_ESTABLISHED or HALF_OPEN
+        assert flow.tcp_tracker.state in (TcpState.HALF_OPEN_OBSERVED, TcpState.MIDSTREAM_ESTABLISHED)
