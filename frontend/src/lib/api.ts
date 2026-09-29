@@ -1,6 +1,9 @@
-import type { AlertsResponse, VerifyResponse, HealthResponse } from '@/types/trinetra';
+export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE && process.env.NEXT_PUBLIC_API_BASE.length > 0)
+  ? process.env.NEXT_PUBLIC_API_BASE
+  : 'https://trinetra-backend-qhc9.onrender.com';
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE ?? '';
+const BASE = API_BASE;
+
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();

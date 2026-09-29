@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { HashDisplay } from '@/components/ui/HashDisplay';
 import { formatTimestamp } from '@/lib/formatters';
 import { useAlerts } from '@/hooks/useAlerts';
+import { API_BASE } from '@/lib/api';
 import styles from './ForensicLedgerCard.module.css';
 
 interface Props {
@@ -22,7 +23,8 @@ export function ForensicLedgerCard({ initialData }: Props) {
     setVerifyState('loading');
     setVerifyMsg('');
     try {
-      const res = await fetch('/api/verify');
+      const res = await fetch(`${API_BASE}/api/verify`);
+
       const d = await res.json();
       if (d.ok) {
         setVerifyState('ok');

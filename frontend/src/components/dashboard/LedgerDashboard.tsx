@@ -23,7 +23,9 @@ import {
   formatTimestamp,
 } from '@/lib/formatters';
 import { HashDisplay } from '@/components/ui/HashDisplay';
+import { API_BASE } from '@/lib/api';
 import styles from './LedgerDashboard.module.css';
+
 
 const SEV_COLOR: Record<Severity, string> = {
   CRITICAL: '#ee0000',
@@ -89,7 +91,7 @@ export function LedgerDashboard({ initialData }: Props) {
     setVerifyState('loading');
     setVerifyMsg('');
     try {
-      const res = await fetch('/api/verify');
+      const res = await fetch(`${API_BASE}/api/verify`);
       const d = await res.json();
       if (d.ok) {
         setVerifyState('ok');
@@ -144,9 +146,10 @@ export function LedgerDashboard({ initialData }: Props) {
               <p className={styles.panelSub}>Current Merkle tip · copy to audit</p>
             </div>
             <div className={styles.actions}>
-              <a className={styles.btn} href="/api/stix" download="trinetra_stix21.json">
+              <a className={styles.btn} href={`${API_BASE}/api/stix`} download="trinetra_stix21.json">
                 Export STIX
               </a>
+
               <button
                 type="button"
                 className={styles.btnPrimary}

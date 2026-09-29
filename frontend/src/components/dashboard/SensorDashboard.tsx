@@ -20,7 +20,9 @@ import {
   formatPPS,
   formatUptime,
 } from '@/lib/formatters';
+import { API_BASE } from '@/lib/api';
 import styles from './SensorDashboard.module.css';
+
 
 const MODELS = [
   { id: 't_a_ddos', cls: 'T-a Volumetric DDoS', type: 'RandomForest', cal: true },
@@ -63,7 +65,8 @@ export function SensorDashboard({ initialData }: Props) {
     let cancelled = false;
     async function load() {
       try {
-        const res = await fetch('/api/health', { cache: 'no-store' });
+        const res = await fetch(`${API_BASE}/api/health`, { cache: 'no-store' });
+
         if (!res.ok) return;
         const json = (await res.json()) as HealthResponse;
         if (!cancelled) setHealth(json);

@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+
 import { useAlerts } from '@/hooks/useAlerts';
+import { API_BASE } from '@/lib/api';
+
 import styles from './SideNav.module.css';
 
 const NAV = [
@@ -41,7 +44,7 @@ export function SideNav() {
       </div>
 
       <div className={styles.footer}>
-        <a href="/api/docs" target="_blank" rel="noopener noreferrer" className={styles.footerLink}>
+        <a href={`${API_BASE}/api/docs`} target="_blank" rel="noopener noreferrer" className={styles.footerLink}>
           API Docs
         </a>
         <div className={styles.footerMeta}>Trinetra · v0.2</div>
@@ -49,3 +52,4 @@ export function SideNav() {
     </nav>
   );
 }
+

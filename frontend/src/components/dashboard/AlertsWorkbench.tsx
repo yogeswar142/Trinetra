@@ -17,7 +17,9 @@ import { THREAT_META } from '@/lib/threatMeta';
 import { formatTimeShort, formatTimestamp } from '@/lib/formatters';
 import { HashDisplay } from '@/components/ui/HashDisplay';
 import { MitreTag } from '@/components/ui/MitreTag';
+import { API_BASE } from '@/lib/api';
 import styles from './AlertsWorkbench.module.css';
+
 
 const SEV_RANK: Record<Severity, number> = {
   CRITICAL: 0,
@@ -188,9 +190,10 @@ export function AlertsWorkbench({ initialData }: Props) {
             placeholder="Hunt · class=PORT_SCAN · severity=HIGH · confidence>0.8 · src=10. · dst="
             aria-label="Alert hunt query"
           />
-          <a className={styles.action} href="/api/stix" target="_blank" rel="noreferrer">
+          <a className={styles.action} href={`${API_BASE}/api/stix`} target="_blank" rel="noreferrer">
             Export STIX
           </a>
+
         </div>
       </section>
 

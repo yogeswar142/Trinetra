@@ -27,7 +27,9 @@ import {
   formatTimestamp,
 } from '@/lib/formatters';
 import { HashDisplay } from '@/components/ui/HashDisplay';
+import { API_BASE } from '@/lib/api';
 import styles from './OverviewDashboard.module.css';
+
 
 const SEV_ORDER: Severity[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
 const SEV_COLOR: Record<Severity, string> = {
@@ -426,7 +428,8 @@ function LedgerPanel({
     setState('loading');
     setMsg('');
     try {
-      const res = await fetch('/api/verify');
+      const res = await fetch(`${API_BASE}/api/verify`);
+
       const d = await res.json();
       if (d.ok) {
         setState('ok');

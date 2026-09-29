@@ -2,6 +2,7 @@
 
 import useSWR from 'swr';
 import type { AlertsResponse } from '@/types/trinetra';
+import { API_BASE } from '@/lib/api';
 
 const POLL_INTERVAL = 2500;
 
@@ -13,8 +14,9 @@ async function fetcher(url: string): Promise<AlertsResponse> {
 
 export function useAlerts(initialData?: AlertsResponse) {
   const { data, error, isLoading, mutate } = useSWR<AlertsResponse>(
-    '/api/alerts',
+    `${API_BASE}/api/alerts`,
     fetcher,
+
     {
       refreshInterval: POLL_INTERVAL,
       fallbackData: initialData,
