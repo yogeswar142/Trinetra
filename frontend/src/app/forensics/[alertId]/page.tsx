@@ -10,6 +10,7 @@ import { IPFlow } from '@/components/ui/IPFlow';
 import { MitreTag } from '@/components/ui/MitreTag';
 import { HashDisplay } from '@/components/ui/HashDisplay';
 import { formatTimestamp } from '@/lib/formatters';
+import type { AlertRecord, EvidenceItem } from '@/types/trinetra';
 import styles from './page.module.css';
 
 export const metadata: Metadata = {
@@ -31,7 +32,7 @@ export default async function ForensicsPage({ params }: Props) {
     notFound();
   }
 
-  const alert = data?.alerts.find((a) => a.alert_id === alertId);
+  const alert = data?.alerts.find((a: AlertRecord) => a.alert_id === alertId);
   if (!alert) notFound();
 
   return (
@@ -69,7 +70,7 @@ export default async function ForensicsPage({ params }: Props) {
         <section className={styles.card}>
           <h3>Evidence</h3>
           <ul className={styles.ev}>
-            {(alert.evidence ?? []).map((e, i) => (
+            {(alert.evidence ?? []).map((e: EvidenceItem, i: number) => (
               <li key={`${e.feature}-${i}`}>
                 <div className={styles.feat}>{e.feature}</div>
                 <div className={styles.val}>{String(e.value)}</div>

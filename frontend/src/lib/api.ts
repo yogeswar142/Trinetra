@@ -1,3 +1,5 @@
+import type { AlertsResponse, VerifyResponse, HealthResponse } from '@/types/trinetra';
+
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE && process.env.NEXT_PUBLIC_API_BASE.length > 0)
   ? process.env.NEXT_PUBLIC_API_BASE
   : 'https://trinetra-backend-qhc9.onrender.com';
