@@ -171,9 +171,15 @@ class FlowTable:
         current_ts = event.timestamp
         self.last_observed_time = max(self.last_observed_time, current_ts)
 
-        # 1. Deterministic Timestamp-Driven Expiry
-        # Expire any flows whose idle duration exceeds idle_timeout based on event.timestamp
-        # Evaluated when time advances by >= 1.0s or table is approaching capacity limit
+        # 1. Deterministic Timestamp-Driven Expiry (1.0s Batching Window)
+        # Expire any flows whose idle duration exceeds idle_timeout based strictly on event.timestamp.
+        # MAXIMUM EXPIRY STALENESS BOUND:
+        # Expiry is evaluated when packet/simulation timestamp advances by >= 1.0s
+        # (current_ts - self._last_expiry_check >= 1.0) or when active capacity reaches 95% limit.
+        # An idle flow is therefore evicted at most 1.0 second of simulation time after its
+        # idle_timeout threshold expires. Because this batching is indexed strictly by event.timestamp
+        # (never wall-clock time), repeated replays of identical captures yield 100% bit-identical
+        # expiration events and flow table records. At EOF, flush_all() deterministically emits any remaining sessions.
         if (current_ts - self._last_expiry_check >= 1.0) or (len(self.flows) >= self.max_flows * 0.95):
             expired = self._check_expiry(current_ts)
             self._last_expiry_check = current_ts

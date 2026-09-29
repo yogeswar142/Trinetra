@@ -209,79 +209,111 @@ To prevent optimistic metric inflation and spatial/temporal data leakage:
 - Under NO circumstances may flows originating from or targeting the same host IP appear in both training and test sets.
 - **Temporal Splitting:** In multi-hour traces, train on the first 60% of temporal execution, validate on the next 20%, and hold out the final 20% for test evaluation.
 
-### 3.2 Cross-Dataset Generalization Check
-Every supervised model trained on one dataset (e.g. CIC-IDS2017) MUST undergo cross-dataset evaluation against a completely distinct real-world dataset (e.g. CTU-13 or malware-traffic-analysis.net). Performance drops must be reported honestly.
+### 3.2 Public Dataset Caveats & Selection Protocol
+Public intrusion detection datasets contain documented methodological flaws that must be accounted for:
+1. **CIC-IDS2017 Label Contamination:** Independent audits (e.g. Engelen et al., 2021; Panigrahi & Borah, 2018) proved that CIC-IDS2017 suffers from significant mislabeling, multicast/broadcast traffic contamination labeled as attack, and TCP packet capture drops that corrupt handshake sequences.
+2. **Preference for CTU-13:** CTU-13 (Garcia et al., 2014) captures real botnet malware executing in controlled virtual environments alongside uncontaminated background campus traffic. CTU-13 is preferred for botnet C2, scanning, and DDoS validation.
+3. **Synthetic Validation Safeguard:** Because no single public dataset accurately captures unidirectional optical TAP / data diode asymmetry, all models are evaluated against Trinetra's deterministic synthetic simulator scenarios emitting identical packet structures with zero label noise.
 
-### 3.3 Independent Held-Out Generators & Evasion Stress Testing
+### 3.3 Incident-Level Alert & False Alarm Rate (FAR) Definitions
+1. **Alert = Deduplicated Incident:** In production network monitoring, raw per-packet or per-flow triggers produce unmanageable alert fatigue. An "alert" in Trinetra is defined strictly as an **aggregated incident** cluster: consecutive detections for the same entity (e.g. victim IP, C2 channel) within a 60-second sliding incident window are grouped into a single unified `AlertRecord`.
+2. **Empirical Operating Points (No Unrealistic Blanket Promises):** FAR is reported empirically across **our own reproducible benign replay captures** (iperf3 throughput, Tranco top DNS queries, multi-host web browsing replays). It must NEVER be described as arbitrary "enterprise baseline traffic".
+3. **Three Explicit Operating Thresholds Reported Per Class:**
+   - **High Sensitivity:** Calibrated to $\le 1.0$ false alert per hour on benign replay.
+   - **Balanced (Default):** Calibrated to $\le 1.0$ false alert per 12 hours on benign replay.
+   - **High Precision:** Calibrated to $\le 1.0$ false alert per 24 hours (1/day) on benign replay.
+
+### 3.4 Calibration Protocol & Reliability Curves
+- **Validation Split Calibration Only:** Supervised ML classifiers (Random Forest, LightGBM) output raw probabilistic margins that do not represent true empirical probabilities. Calibration (via Isotonic Regression or Platt Sigmoid Scaling) MUST be fitted **strictly on the validation split**—never on the training split (overfit) and never on the test split (leakage).
+- **Reliability Diagrams & Brier Score:** For each detector, Phase 2 will report:
+  - Expected Calibration Error (ECE) across 10 confidence bins.
+  - Brier Score ($BS = \frac{1}{N}\sum (f_i - y_i)^2$).
+  - Reliability Curves plotting observed positive fraction against mean predicted confidence.
+
+### 3.5 Independent Held-Out Generators & Data Availability
 For each threat category, detectors will be evaluated against attack generators completely unseen during training:
 
-| Threat | Unseen Held-Out Generator | Evasion Technique Tested |
-|---|---|---|
-| **T-a (DDoS)** | TRex stateful generator | Mixed protocol flooding with randomized inter-arrival jitter |
-| **T-b (Beaconing)** | Sliver C2 with 50% random jitter | Variable interval heartbeat deliberately breaking fixed periodicity |
-| **T-c (DGA/Tunnel)** | Suppobox / Dictionary-DGA & Iodine base32 | Meaningful English dictionary word concatenation; high-density base32 DNS queries |
-| **T-d (Encrypted TLS)** | Custom uTLS client | JA3 fingerprint randomized to match Google Chrome browser while executing C2 |
-| **T-e (Scanning)** | Nmap slow scan (`-T1` Sneaky) | 1 probe every 15–30 seconds to bypass fast sliding windows |
-| **T-f (Exfiltration)** | Encrypted trickle script | Outbound upload throttled to < 20 KB/min to evade burst detection |
+| Threat | Held-Out Generator | Execution Environment / Operator | Fallback if Tool Unavailable |
+|---|---|---|---|
+| **T-a (DDoS)** | TRex stateful generator / hping3 | Linux (WSL2/teammate testbed) | Built-in deterministic SYN/UDP flood simulator (`SCENARIO_DDOS_SYN_FLOOD`) |
+| **T-a (Slowloris)** | Slowloris HTTP starvation script | Python / Linux / Windows | Built-in slow HTTP header starvation generator |
+| **T-b (Beaconing)** | Sliver C2 (with 50% random jitter) | Linux / Go runtime (teammate VM) | Built-in deterministic beaconing simulator (`SCENARIO_BEACONING`) with jitter |
+| **T-c (DNS Tunnel)** | dnscat2 / iodine base32 | Linux / Ruby (teammate VM) | Built-in DNS tunnel simulator (`SCENARIO_DNS_TUNNEL`) emitting valid TXT queries |
+| **T-c (DGA)** | Clean-room algorithmic DGA generators | Pure Python (in-repo) | Algorithmic generators from papers (Conficker, Cryptolocker, Bamital, Doxrem) |
+| **T-d (Encrypted TLS)** | Custom uTLS client / MTA PCAPs | Linux / Windows (curl/quiche) | Brad Duncan MTA PCAPs (`malware-traffic-analysis.net`) and synthetic TLS fixture |
+| **T-e (Scanning)** | Nmap slow scan (`-T1` Sneaky) | Linux / Windows Nmap CLI | Built-in port scan simulator (`SCENARIO_PORT_SCAN`) |
+| **T-f (Exfiltration)** | Encrypted trickle upload script | Python / Windows / Linux | Built-in large-payload exfiltration simulator (`SCENARIO_EXFIL`) |
 
-### 3.4 Hard Negative Evaluation (False Positive Suppression)
-Models must maintain low false alarm rates when evaluated against challenging benign traffic:
-1. **Video Conferencing / WebRTC / YouTube Uploads:** High $R_{byte}$ and massive continuous outbound byte flow.
-2. **NTP / Cloud Time Sync:** Extremely low IAT CV (regular periodic intervals).
-3. **Authorized Vulnerability Scanners / Nessus:** Authorized high-rate internal sweeps.
-4. **Legitimate CDN Encrypted Payloads:** High-entropy video streaming chunks.
-5. **Breaking News Flash Crowds:** Sudden volumetric surge of incoming connections to internal servers.
+### 3.6 Real TLS & QUIC Captures for T-d
+To ensure robust malware classification in encrypted sessions without decryption:
+1. **Malicious TLS Captures:** Real Cobalt Strike, Qakbot, and AsyncRAT captures sourced from `malware-traffic-analysis.net` and CTU-13 HTTPS botnet traces.
+2. **JA3 Blacklist Intelligence:** abuse.ch SSLBL feed (CC0 1.0 Universal) mapped against extracted JA3 client hashes.
+3. **Benign TLS Baseline:** Automated captures of top Tranco domains over TLS 1.2 and TLS 1.3 using standard Chrome, Firefox, and curl clients.
+4. **QUIC Baseline:** Real unencrypted QUIC Initial / Handshake frames captured from HTTP/3 web traffic (curl `--http3` to Cloudflare/Google endpoints), extracting packet sizes, version tags, and connection IDs.
 
-### 3.5 Calibrated Reporting Metrics
-- **Bootstrap 95% Confidence Intervals:** Every reported precision, recall, and F1 score must include bootstrap CI bounds (1,000 iterations).
-- **False Alerts per Hour (FAR/hour):** Calculated across at least 12 hours of benign enterprise traffic baseline.
-- **Time-to-Detect (TTD):** Measured from the arrival of the first attack packet at the sensor until the alert is committed to the ledger.
+### 3.7 Dataset Storage & Sizes (<1GB Rule)
+To preserve repository agility and strict local enclave reproducibility, **no raw dataset exceeding 1 GB will be committed directly to Git**. All datasets are downloaded and managed via `scripts/fetch_datasets.py`:
+
+| Dataset / Source | Role | Raw Size | Pruned Enclave Size | Storage Strategy |
+|---|---|---|---|---|
+| **Tranco Top 1k Domains** | T-c Benign Baseline | ~50 KB | ~50 KB | Committed to `data/baselines/tranco_top1k.csv` |
+| **abuse.ch SSLBL JA3 Feed**| T-d Malicious Fingerprints | ~250 KB | ~250 KB | Committed to `data/baselines/sslbl_ja3.csv` |
+| **CTU-13 Scenario Subsets**| T-a, T-b, T-e Evaluation | 2–15 GB (raw pcap) | ~45 MB (filtered flows) | Pruned flow records fetched via script |
+| **Realistic Mixed PCAP** | Line-rate Benchmarks | ~308 MB (500k pkts)| 308 MB | Disk-backed fixture generated deterministically |
+| **Synthetic Scenarios** | T-a through T-f Testing | Dynamic | Dynamic (<10 MB) | Generated on demand from fixed random seed |
 
 ---
 
 ## 4. Phase 2 Sub-Phases & Implementation Roadmap
 
 ```
-+--------------------------------------------------------------------------+
-| Phase 2a: Datasets, Feature Extraction Engine & Model Pipeline Plumbing  |
-| - scripts/train/ data downloaders & verification                         |
-| - backend/trinetra/features/ (streaming windowed statistical extractors) |
-| - Group-split cross-validation harness                                   |
-+--------------------------------------------------------------------------+
-                                    |
-                                    v
-+--------------------------------------------------------------------------+
-| Phase 2b: Volumetric & Reconnaissance Detectors                          |
-| - T-a: DDoS (SYN flood, UDP reflection, Slowloris)                       |
-| - T-e: Port Scan & Horizontal Reconnaissance                             |
-+--------------------------------------------------------------------------+
-                                    |
-                                    v
-+--------------------------------------------------------------------------+
-| Phase 2c: Command & Control and Infiltration Detectors                   |
-| - T-b: Botnet C2 Beaconing (autocorrelation, FFT, CV)                    |
-| - T-c: DGA Domain Classifier & DNS Tunnelling                            |
-+--------------------------------------------------------------------------+
-                                    |
-                                    v
-+--------------------------------------------------------------------------+
-| Phase 2d: Encrypted Threats, Exfiltration & System Integration           |
-| - T-d: Encrypted Session Classifier (JA3 threat intel + PST vectors)     |
-| - T-f: Data Exfiltration Detector (R_byte, volume accumulation)          |
-| - Model cards, explainability narration adapter, and end-to-end report   |
-+--------------------------------------------------------------------------+
++-------------------------------------------------------------------------------+
+| Phase 2a: Machine Learning Infrastructure & Pipeline Plumbing (NO DETECTORS)  |
+| - Dataset fetch scripts with SHA-256 verification and license attribution     |
+| - Deterministic windowed feature engine (dst/window, src/window, TLS, domain) |
+| - Group-split cross-validation harness (enforcing zero IP/subnet leakage)     |
+| - Evaluation report generator skeleton (bootstrap CIs, FAR/h, TTD, reliability)|
+| - Model artifact manifest loader (Ed25519 signature & SHA-256 verification)   |
+| - Benchmark v3 (feature engine overhead on 500k mixed fixture)                |
++-------------------------------------------------------------------------------+
+                                        |
+                                        v
++-------------------------------------------------------------------------------+
+| Phase 2b: Volumetric, Reconnaissance & Exfiltration Detectors                 |
+| - T-a: Volumetric DDoS & Resource Starvation (SYN flood, UDP, Slowloris)      |
+| - T-e: Port Scan & Horizontal Reconnaissance                                  |
+| - T-f: Data Exfiltration Detector (R_byte, volume accumulation)               |
++-------------------------------------------------------------------------------+
+                                        |
+                                        v
++-------------------------------------------------------------------------------+
+| Phase 2c: Command & Control and Infiltration Detectors                        |
+| - T-b: Botnet C2 Beaconing (autocorrelation, FFT, CV)                         |
+| - T-c: DGA Domain Classifier & DNS Tunnelling Detector                        |
++-------------------------------------------------------------------------------+
+                                        |
+                                        v
++-------------------------------------------------------------------------------+
+| Phase 2d: Encrypted Threats, System Integration & End-to-End Evaluation       |
+| - T-d: Encrypted Session Classifier (JA3 threat intel + PST vectors)          |
+| - Full pipeline integration: Ingest -> FlowTable -> FeatureEngine -> Detectors|
+| - Multi-threat end-to-end evaluation report & forensic ledger audit           |
+| - Local Ollama qwen2.5 explainability narration adapter                       |
++-------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 5. Architectural Decisions & Questions for User Confirmation
+## 5. Architectural Decisions & "What I Need from You"
 
-Prior to commencing Phase 2 implementation, the following architectural choices require alignment:
+### 5.1 Confirmed Decisions (from Phase 1.5 Review)
+1. **Model Persistence:** Python `joblib` artifacts accompanied by a cryptographically signed SHA-256 manifest. The manifest is verified *before* loading to mitigate pickle code execution risk, and signed using the ledger's Ed25519 private key. `ONNX` is excluded from scope to avoid external runtime dependencies.
+2. **Alert & FAR Definition:** Alerts represent deduplicated incident clusters (60s window). FAR is reported across our benign replay traces at 1/hour, 1/12h, and 1/day operating points per class.
+3. **Execution Constraints:** 100% CPU execution within the air-gapped container with zero external network connectivity.
 
-1. **Model Persistence Format:**
-   - *Option A (Recommended):* Standard Python `joblib` / `pickle` artifacts with cryptographic SHA-256 integrity verification inside the enclave.
-   - *Option B:* `ONNX` runtime export. Enables cross-language evaluation, but adds `onnxruntime` dependency.
-2. **Target Operational False Alarm Rate (FAR):**
-   - *Proposed Target:* $\le 1.0$ false alert per 12 hours of enterprise baseline traffic ($FAR \le 0.083 \text{ alerts/hour}$) at the nominal operating threshold.
-3. **Execution Hardware Constraint:**
-   - *Baseline Assumption:* Pure CPU execution on single core/multiprocess within the air-gapped container (zero CUDA/GPU dependency).
+### 5.2 What I Need from You (with Sensible Defaults)
+To facilitate testing of optional components in subsequent sub-phases, the user may optionally provide:
+1. **Linux/WSL2 Environment (Optional):** For running external third-party traffic tools (`softflowd`, `TRex`, `Sliver`).
+   - *Default Fallback:* Trinetra provides built-in pure-Python deterministic generators for all 6 threat classes, allowing 100% of tests and benchmarks to run cleanly on Windows.
+2. **Local Ollama Instance (Optional):** Running `qwen2.5:7b` at `http://localhost:11434` for testing offline AI alert narration in Phase 2d.
+   - *Default Fallback:* Trinetra provides a deterministic template-based narration adapter that operates with zero LLM dependency.

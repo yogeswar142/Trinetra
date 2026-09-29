@@ -12,28 +12,24 @@
 
 ## 1. Competitive Landscape Analysis (PS 26145 Repositories)
 
-We conducted an audit of public GitHub repositories associated with SIH PS 26145 ("AI-Based Detection of Cyber Threats in Unidirectional IP Traffic" by NTRO):
+We conducted an audit of public GitHub repositories associated with SIH PS 26145 ("AI-Based Detection of Cyber Threats in Unidirectional IP Traffic" by NTRO). Only repositories actually opened and reviewed during this session are listed in the evidence table below:
 
 | # | Repository URL | Last Commit (Verified) | Claimed Capabilities | Verifiably Present in Code (with File/Line Citations) | Verification Status & Gaps |
 |---|---|---|---|---|---|
 | 1 | `https://github.com/archduke1337/SIH26145` | 28 Sep 2026 | RF+IF, Ollama qwen2.5, WebSocket alert stream | `docs/ARCHITECTURE.md` (lines 14–34): *"Synthetic traffic generator / fixture -> Read-only JSONL replay -> Python streaming worker -> Appwrite Databases"*; `backend/pyproject.toml` lists `fastapi`, `pydantic`, `uvicorn`, `appwrite`, `httpx` | [VERIFIED] Pre-parsed JSONL replay only; zero raw packet or NetFlow binary parsing; no TLS JA3/JA4 byte extractor; no cryptographic ledger. |
-| 2 | `https://github.com/xhhbbshbsj/SIH-2026-26145` | 27 Sep 2026 | SentryDiode: Packet capture, ML detection, FastAPI backend | `sentry-diode/requirements.txt` contains `scapy`, `dpkt`, `numpy`, `scikit-learn`, `fastapi`; `sniffer.py` uses Scapy `sniff()` loop | [VERIFIED] Slow Scapy packet capture loop; no RFC 3954 binary NetFlow v9 parser; no passive TCP session tracking state machine; no tamper-evident ledger. |
+| 2 | `https://github.com/xhhbbshbsj/SIH-2026-26145` | 27 Sep 2026 | SentryDiode: Packet capture, ML detection, FastAPI backend | `sentry-diode/requirements.txt` contains `scapy`, `dpkt`, `numpy`, `scikit-learn`, `fastapi`; `sniffer.py` uses Scapy `sniff()` loop | [VERIFIED] Scapy packet capture loop; no RFC 3954 binary NetFlow v9 parser; no passive TCP session tracking state machine; no tamper-evident ledger. |
 | 3 | `https://github.com/AtharvaSamant4/DrishtiGuard` | 24 Sep 2026 | Unidirectional privacy / network monitor | `apps/extension/manifest.json`, `apps/web/package.json` | [VERIFIED] Client-side Next.js / browser extension privacy utility, not an air-gapped network TAP / data diode IDS. |
-| 4 | `https://github.com/Aman-Verma-28/SIH-2024-PS-26145` | 18 Aug 2024 | AI threat detector for diodes | Single README.md markdown file | [VERIFIED PLACEHOLDER] Empty repository stub. **Note on naming:** Student teams frequently branch, rename, or adapt earlier years' repository scaffolds (e.g. SIH 2024/2025) for SIH 2026 where similar problem statement numbers repeat. |
-| 5 | `https://github.com/angadmaan/ntro-unidirectional-threat-detection` | UNVERIFIED | CLI monitor + Web SOC, IF+RF | Repository private or unresolvable at fetch time | [UNVERIFIED - EXCLUDED FROM COUNTS] |
-| 6 | `https://github.com/sathwikgidijala-glitch/UniGuard-SIH26145` | UNVERIFIED | Web dashboard + AI classifier | Repository private or unresolvable at fetch time | [UNVERIFIED - EXCLUDED FROM COUNTS] |
-| 7 | `https://github.com/cyber-sentinel-sih/unidirectional-traffic-monitor` | UNVERIFIED | Real-time packet inspector | Repository private or unresolvable at fetch time | [UNVERIFIED - EXCLUDED FROM COUNTS] |
-| 8 | `https://github.com/team-diode-guard/ntro-diode-defense` | UNVERIFIED | Signature + Anomaly IDS | Repository private or unresolvable at fetch time | [UNVERIFIED - EXCLUDED FROM COUNTS] |
-| 9 | `https://github.com/deep-packet-ai/sih-26145-ai-threat` | UNVERIFIED | PyTorch LSTM model | Repository private or unresolvable at fetch time | [UNVERIFIED - EXCLUDED FROM COUNTS] |
-| 10 | `https://github.com/netsec-analyst/ja3-tls-analyzer` | UNVERIFIED | Batch JA3 script | Repository private or unresolvable at fetch time | [UNVERIFIED - EXCLUDED FROM COUNTS] |
+| 4 | `https://github.com/Aman-Verma-28/SIH-2024-PS-26145` | 18 Aug 2024 | AI threat detector for diodes | Single `README.md` markdown file | [VERIFIED PLACEHOLDER] Empty repository stub. **Note on naming:** The exact reason for the "SIH-2024" repository name prefix while referencing PS 26145 is [UNVERIFIED] (the repository was created on 18 Aug 2024 and contains only a stub README.md). |
 
-### 1.1 Competitive Differentiation Claim (Evidence-Supported)
-Across the verifiably audited repositories:
-1. **Zero repos combine real binary dual-mode ingest:** Competitors rely either on pre-parsed JSONL replays (`archduke1337`), slow per-packet Scapy capture loops (`xhhbbshbsj`), or client-side web tools (`AtharvaSamant4`). None implement zero-copy/streaming dpkt PCAP parsing combined with an RFC 3954 binary NetFlow v9 parser.
-2. **Zero repos implement an air-gap compliant forensic ledger:** None of the audited competitor repositories implement a signed, hash-chained Merkle ledger for alert non-repudiation. (Earlier secondary claims regarding external blockchain HTTP calls have been excluded as unverified).
-3. **Zero repos handle passive bidirectional mirrored TAP dynamics with mid-stream recovery:** Competitors assume either simplex flows with zero ACKs or fail when asymmetric capture or mid-stream traffic arrives.
-4. **Reconciliation with Public Claims:** While several public hackathon repos claim JA3/JA4 parsing, web dashboards, or AI analysts in high-level documentation, direct code audits reveal these to be either UI mockups, static placeholders, or pre-parsed batch scripts lacking a line-rate streaming engine.
-5. **Scope Caveat:** Private or unindexed hackathon submissions are not evaluated; this differentiation claim is strictly bounded to the verified codebases listed above.
+*Note on Public Repository Claims:* Searches across public platforms reveal various repos that claim features such as JA3/JA3S/JA4 parsing, web dashboards, or AI analysts in their high-level READMEs. When the underlying code is inspected, these are typically UI stubs, static placeholders, or pre-parsed batch scripts lacking line-rate streaming packet parsing. Any additional repos not directly opened and inspected in this session are excluded from counts and tagged [UNVERIFIED].
+
+### 1.1 Trinetra Demonstrated Capabilities (Test- and Benchmark-Proven)
+Rather than asserting unverifiable claims about other teams, Trinetra defines its positioning strictly by **what we demonstrably do, with an automated test or reproducible benchmark to prove it**:
+1. **Real Binary Dual-Mode Ingest:** Proved by `tests/test_pcap_ingest.py` (dpkt PCAP/PCAPNG, VLAN, QinQ) and `tests/test_netflow_ingest.py` (original RFC 3954 NetFlow v9 binary parser with out-of-order templates, template refresh, options flowsets, and capped orphan buffers).
+2. **Offline Tamper-Evident Forensic Ledger:** Proved by `tests/test_ledger.py` (Merkle tree SHA-256 leaves, Ed25519 digital signatures, inclusion proofs, chained block headers).
+3. **Passive Bidirectional TAP Tracking with Mid-Stream Recovery:** Proved by `tests/test_flow_table_tcp.py` and 4 disk-backed edge-case PCAPs in `data/fixtures/tcp_edge_cases/` (zero-window, out-of-order retransmission, midstream discovery, asymmetric one-sided loss).
+4. **Air-Gap Rigor:** Proved by `tests/test_no_transmit.py` (AST scan forbidding transmit calls/libraries, runtime socket blocking, Docker Compose enclave isolation verification).
+5. **Empirical Performance Benchmarks:** Proved by `scripts/benchmark_v2.py` saving machine-readable JSON metrics on a 500,000-packet mixed capture on our own hardware.
 
 ---
 
@@ -92,12 +88,19 @@ State transitions (happy path):
 | **abuse.ch SSLBL** | Malicious JA3/JA3S fingerprints (T-d) | CSV / JSON | CC0 1.0 Universal (Public Domain) | https://sslbl.abuse.ch/ja3-fingerprints/ | [VERIFIED] Actively maintained open threat feed. |
 | **salesforce/ja3** | Reference JA3 TLS client fingerprinting | Python code | BSD-3-Clause | https://github.com/salesforce/ja3 | [VERIFIED] Archived 1 May 2025 (stable reference standard). |
 
-### 3.1 Third-Party NetFlow Library Maintenance Audit
+### 3.1 Third-Party NetFlow Library Maintenance Audit & Fixture Provenance
 In accordance with Deviation #2, we evaluated third-party Python NetFlow implementations:
 1. `bitkeks/python-netflow-v9-softflowd` (`https://github.com/bitkeks/python-netflow-v9-softflowd`): Last release Feb 22, 2024. Maintained as a basic reference collector, but lacks streaming buffer management, high-throughput batching, and integration with an in-memory session table.
 2. `ipfix` on PyPI (`https://pypi.org/project/ipfix/`): Last released in 2020 (unmaintained for >5 years).
 3. `phaag/nfdump` (`https://github.com/phaag/nfdump`): Actively maintained C tool suite, but introduces external C dependencies and requires a background daemon process rather than in-process zero-dependency pure Python streaming.
 *Conclusion:* Building an original RFC 3954 NetFlow v9 parser in Trinetra (`trinetra.ingest.netflow`) guarantees zero external C dependencies, deterministic replay, native orphaned-template buffering, and direct integration with `FlowTable`.
+
+**NetFlow Test Fixture Provenance & Byte Counting Accounting:**
+- **Fixture Provenance:** `data/fixtures/netflow_v9_export.bin` was generated using our RFC 3954 conforming binary builder script (`scripts/generate_netflow_fixtures.py`) and is classified as a **builder reference fixture**. Generating an independent third-party export fixture via `softflowd -v 9 -r netflow_comparison.pcap` or `nfdump/pmacct` on Linux/WSL2 is logged as an open item requiring a Linux/WSL host or teammate's machine.
+- **Byte Counting Accounting (NetFlow vs PCAP):** NetFlow v9 records report the IP layer total length (`ip.len`, comprising IPv4 header, transport header, and payload) as mandated by RFC 3954 `FIELD_IN_BYTES` (ID 1). Raw PCAP frames include the 14-byte Ethernet (L2) header. In Trinetra's `PcapIngest`, `FlowEvent.length` records IP-layer length (`len(ip_pkt)`). Consequently, the byte totals across both ingest paths evaluate to exactly 8,170 bytes; this equivalence is mathematically grounded at the IP layer and is not coincidental.
+
+**DGArchive Licensing & DGA Reimplementation Guarantee:**
+- Because DGArchive is distributed under **CC BY-NC-SA 3.0**, all DGA algorithmic generators used for Phase 2 training and synthetic simulation within Trinetra are explicitly **our clean-room reimplementations from published academic papers** (e.g. Conficker, Cryptolocker, Bamital, Doxrem algorithms), ensuring zero dependency on or redistribution of Fraunhofer DGArchive database dumps.
 
 ---
 

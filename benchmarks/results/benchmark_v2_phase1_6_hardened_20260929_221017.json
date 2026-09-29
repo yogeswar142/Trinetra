@@ -1,0 +1,167 @@
+{
+  "benchmark_version": "v2",
+  "benchmark_label": "phase1_6_hardened",
+  "benchmark_scope_label": "Phase 1 subset: no entropy/DNS/TLS/QUIC parsing, no inference",
+  "benchmark_cadence_commitment": "A full-pipeline benchmark will be executed and recorded at the end of every sub-phase (Phase 2a, 2b, 2c, 2d).",
+  "system_telemetry": {
+    "timestamp_utc": "2026-09-29T16:39:25.167329+00:00",
+    "platform_system": "Windows",
+    "platform_release": "10",
+    "platform_version": "10.0.28000",
+    "platform_machine": "AMD64",
+    "processor": "ARMv8 (64-bit) Family 8 Model 2 Revision 101, Qualcomm Technologies Inc",
+    "cpu_count_logical": 6,
+    "python_version": "3.11.9",
+    "python_implementation": "CPython",
+    "python_architecture": "64bit",
+    "is_arm64_x64_emulated": false,
+    "emulation_note": "Native execution",
+    "power_plugged": false,
+    "battery_percent": 66,
+    "ram_total_gb": 15.63,
+    "ram_available_gb": 3.75,
+    "docker_version": "Docker unavailable"
+  },
+  "fixtures": {
+    "syn_flood": {
+      "fixture_path": "C:\\Users\\Yogeswar\\Development\\Projects\\trinetra\\data\\fixtures\\benchmark_syn_flood.pcap",
+      "throughput": {
+        "repetitions": 5,
+        "packets_processed": 20000,
+        "packets_per_second": {
+          "median": 26864.74,
+          "min": 26298.47,
+          "max": 31809.49,
+          "raw": [
+            31809.49,
+            26593.5,
+            28700.14,
+            26864.74,
+            26298.47
+          ]
+        },
+        "flows_per_second": {
+          "median": 26854.0,
+          "min": 26287.95,
+          "max": 31796.77,
+          "raw": [
+            31796.77,
+            26582.86,
+            28688.66,
+            26854.0,
+            26287.95
+          ]
+        },
+        "throughput_mbps": {
+          "median": 16.33,
+          "min": 15.99,
+          "max": 19.34,
+          "raw": [
+            19.34,
+            16.17,
+            17.45,
+            16.33,
+            15.99
+          ]
+        },
+        "peak_active_flows": 19992
+      },
+      "latency": {
+        "service_time_including_parse": {
+          "count": 20000,
+          "mean_us": 24.427,
+          "p50_us": 23.5,
+          "p95_us": 26.3,
+          "p99_us": 41.7,
+          "p99_9_us": 158.0,
+          "max_us": 497.7
+        },
+        "ingest_to_alert_emit_lag": {
+          "count": 0,
+          "p50_us": 0,
+          "p95_us": 0,
+          "p99_us": 0,
+          "p99_9_us": 0,
+          "max_us": 0,
+          "mean_us": 0
+        },
+        "mean_vs_p99_explanation": "In Benchmark v1, the mean time per packet exceeded p99 because the throughput elapsed time was measured around the entire outer loop (including file I/O, garbage collection, and continuous tracemalloc tracking), whereas latency was measured only around table.process_event(). In Benchmark v2, latency definition (a) measures true per-packet service time including raw parse, and the percentile distribution correctly bounds the mean."
+      }
+    },
+    "realistic_mixed_500k": {
+      "fixture_path": "C:\\Users\\Yogeswar\\Development\\Projects\\trinetra\\data\\fixtures\\realistic_mixed_500k.pcap",
+      "throughput": {
+        "repetitions": 3,
+        "packets_processed": 500000,
+        "packets_per_second": {
+          "median": 46828.97,
+          "min": 46496.07,
+          "max": 48033.55,
+          "raw": [
+            48033.55,
+            46828.97,
+            46496.07
+          ]
+        },
+        "flows_per_second": {
+          "median": 2575.78,
+          "min": 2557.47,
+          "max": 2642.04,
+          "raw": [
+            2642.04,
+            2575.78,
+            2557.47
+          ]
+        },
+        "throughput_mbps": {
+          "median": 242.25,
+          "min": 240.52,
+          "max": 248.48,
+          "raw": [
+            248.48,
+            242.25,
+            240.52
+          ]
+        },
+        "peak_active_flows": 27502
+      },
+      "latency": {
+        "service_time_including_parse": {
+          "count": 50000,
+          "mean_us": 18.595,
+          "p50_us": 15.0,
+          "p95_us": 33.9,
+          "p99_us": 46.4,
+          "p99_9_us": 311.5,
+          "max_us": 28594.9
+        },
+        "ingest_to_alert_emit_lag": {
+          "count": 0,
+          "p50_us": 0,
+          "p95_us": 0,
+          "p99_us": 0,
+          "p99_9_us": 0,
+          "max_us": 0,
+          "mean_us": 0
+        },
+        "mean_vs_p99_explanation": "In Benchmark v1, the mean time per packet exceeded p99 because the throughput elapsed time was measured around the entire outer loop (including file I/O, garbage collection, and continuous tracemalloc tracking), whereas latency was measured only around table.process_event(). In Benchmark v2, latency definition (a) measures true per-packet service time including raw parse, and the percentile distribution correctly bounds the mean."
+      },
+      "memory": {
+        "packets_processed": 100000,
+        "rss_initial_mb": 122.66,
+        "rss_peak_mb": 126.98,
+        "rss_delta_mb": 4.32,
+        "tracemalloc_peak_mb": 13.16
+      }
+    },
+    "eviction_stress": {
+      "distinct_flows_injected": 30000,
+      "table_capacity_limit": 1000,
+      "final_active_flows": 1000,
+      "evicted_flows_count": 29000,
+      "expected_evictions": 29000,
+      "memory_bounded": true,
+      "rss_delta_mb": 0.27
+    }
+  }
+}

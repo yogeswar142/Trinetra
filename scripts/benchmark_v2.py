@@ -358,6 +358,8 @@ def run_benchmark_v2(label: str = "current") -> Path:
     results = {
         "benchmark_version": "v2",
         "benchmark_label": label,
+        "benchmark_scope_label": "Phase 1 subset: no entropy/DNS/TLS/QUIC parsing, no inference",
+        "benchmark_cadence_commitment": "A full-pipeline benchmark will be executed and recorded at the end of every sub-phase (Phase 2a, 2b, 2c, 2d).",
         "system_telemetry": telemetry,
         "fixtures": {
             "syn_flood": {

@@ -290,3 +290,120 @@ class TestCraftedTcpEdgeCasePcaps:
         assert flow.tcp_tracker is not None
         # Since only reverse/asymmetric packets arrived without handshake, state is MIDSTREAM_ESTABLISHED or HALF_OPEN
         assert flow.tcp_tracker.state in (TcpState.HALF_OPEN_OBSERVED, TcpState.MIDSTREAM_ESTABLISHED)
+
+
+class TestFlowTableExpiryBatchingAndDeterminism:
+    """
+    Validates the 1.0s maximum expiry staleness bound and strict timestamp-driven
+    replay determinism.
+    """
+
+    def test_expiry_staleness_bounded_by_1s(self) -> None:
+        """
+        Verify that an idle flow is expired at most 1.0s of simulation timestamp
+        after its idle_timeout threshold expires.
+        """
+        table = FlowTable(idle_timeout_seconds=10.0)
+
+        # Flow 1 arrives at t = 100.0s
+        ev1 = FlowEvent(
+            timestamp=100.0,
+            src_ip="10.0.0.1",
+            src_port=1000,
+            dst_ip="192.168.1.1",
+            dst_port=80,
+            protocol="TCP",
+            length=100,
+            tcp_flags={"SYN": True, "ACK": False, "FIN": False, "RST": False},
+        )
+        _, expired = table.process_event(ev1)
+        assert len(expired) == 0
+        assert len(table.flows) == 1
+
+        # Flow 2 arrives at t = 109.5s (idle time for Flow 1 is 9.5s < 10.0s)
+        ev2 = FlowEvent(
+            timestamp=109.5,
+            src_ip="10.0.0.2",
+            src_port=2000,
+            dst_ip="192.168.1.1",
+            dst_port=80,
+            protocol="TCP",
+            length=100,
+            tcp_flags={"SYN": True, "ACK": False, "FIN": False, "RST": False},
+        )
+        _, expired = table.process_event(ev2)
+        assert len(expired) == 0
+        assert len(table.flows) == 2
+
+        # Flow 2 sends another packet at t = 110.8s:
+        # Time since last expiry check (109.5) is 1.3s >= 1.0s.
+        # Flow 1 idle duration is 110.8 - 100.0 = 10.8s (> 10.0s idle_timeout).
+        # Staleness is 0.8s <= 1.0s batching bound. Flow 1 MUST expire now.
+        ev3 = FlowEvent(
+            timestamp=110.8,
+            src_ip="10.0.0.2",
+            src_port=2000,
+            dst_ip="192.168.1.1",
+            dst_port=80,
+            protocol="TCP",
+            length=100,
+            tcp_flags={"SYN": False, "ACK": True, "FIN": False, "RST": False},
+        )
+        _, expired = table.process_event(ev3)
+        assert len(expired) == 1
+        assert expired[0].initiator_ip == "10.0.0.1"
+        assert len(table.flows) == 1  # Only Flow 2 remains active
+
+    def test_deterministic_replay_across_runs(self) -> None:
+        """
+        Verify that running the same event stream through separate FlowTable instances
+        yields 100% identical flow records, counters, and expiration order.
+        """
+        import random
+        rng = random.Random(42)
+
+        # Generate a synthetic stream of 200 events across 20 distinct flows
+        events: list[FlowEvent] = []
+        cur_ts = 1000.0
+        for i in range(200):
+            cur_ts += rng.uniform(0.05, 0.3)
+            flow_idx = rng.randint(1, 20)
+            events.append(
+                FlowEvent(
+                    timestamp=round(cur_ts, 4),
+                    src_ip=f"10.0.0.{flow_idx}",
+                    src_port=40000 + flow_idx,
+                    dst_ip="192.168.1.100",
+                    dst_port=443,
+                    protocol="TCP",
+                    length=rng.randint(60, 1500),
+                    tcp_flags={"SYN": (i < 20), "ACK": True, "FIN": False, "RST": False},
+                )
+            )
+
+        # Run 1
+        table1 = FlowTable(idle_timeout_seconds=5.0, max_flows=15)
+        expired1: list[str] = []
+        for ev in events:
+            _, exp = table1.process_event(ev)
+            for r in exp:
+                expired1.append(f"{r.flow_id}_{r.forward_bytes}_{r.reverse_bytes}")
+        for r in table1.flush_all():
+            expired1.append(f"FLUSH_{r.flow_id}_{r.forward_bytes}_{r.reverse_bytes}")
+
+        # Run 2
+        table2 = FlowTable(idle_timeout_seconds=5.0, max_flows=15)
+        expired2: list[str] = []
+        for ev in events:
+            _, exp = table2.process_event(ev)
+            for r in exp:
+                expired2.append(f"{r.flow_id}_{r.forward_bytes}_{r.reverse_bytes}")
+        for r in table2.flush_all():
+            expired2.append(f"FLUSH_{r.flow_id}_{r.forward_bytes}_{r.reverse_bytes}")
+
+        assert expired1 == expired2
+        assert len(expired1) > 0
+        assert table1.stats.total_flows_created == table2.stats.total_flows_created
+        assert table1.stats.evicted_flows_capacity == table2.stats.evicted_flows_capacity
+        assert table1.stats.expired_flows == table2.stats.expired_flows
+
