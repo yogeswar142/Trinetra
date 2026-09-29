@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trinetra Complete Tech Stack</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+            margin: 0;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 850px;
+        }
+        .layer {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 16px 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+        }
+        .layer-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 6px;
+        }
+        .tech-grid {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .tech-card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .tech-card i {
+            font-size: 18px;
+        }
+        .frontend { border-left: 4px solid #0ea5e9; }
+        .backend { border-left: 4px solid #eab308; }
+        .ai { border-left: 4px solid #8b5cf6; }
+        .crypto { border-left: 4px solid #ef4444; }
+        .infra { border-left: 4px solid #10b981; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- Frontend -->
+        <div class="layer frontend">
+            <div class="layer-title">1. Frontend SOC Dashboard</div>
+            <div class="tech-grid">
+                <div class="tech-card"><i class="devicon-nextjs-plain colored"></i> Next.js 15</div>
+                <div class="tech-card"><i class="devicon-react-original colored"></i> React 19</div>
+                <div class="tech-card"><i class="devicon-typescript-plain colored"></i> TypeScript 5</div>
+                <div class="tech-card">🌐 Cobe 3D Globe</div>
+                <div class="tech-card">📊 Recharts</div>
+                <div class="tech-card">⚡ SWR Data Fetching</div>
+            </div>
+        </div>
+
+        <!-- Backend & API -->
+        <div class="layer backend">
+            <div class="layer-title">2. Core Backend & Ingest Engine</div>
+            <div class="tech-grid">
+                <div class="tech-card"><i class="devicon-python-plain colored"></i> Python 3.12</div>
+                <div class="tech-card"><i class="devicon-fastapi-plain colored"></i> FastAPI</div>
+                <div class="tech-card">🔌 WebSockets</div>
+                <div class="tech-card">📡 Scapy & DPKT (PCAPs)</div>
+                <div class="tech-card">📑 NetFlow v9 / IPFIX</div>
+                <div class="tech-card">🛡️ Pydantic v2</div>
+            </div>
+        </div>
+
+        <!-- AI & ML -->
+        <div class="layer ai">
+            <div class="layer-title">3. AI / ML Detection Pipeline</div>
+            <div class="tech-grid">
+                <div class="tech-card"><i class="devicon-scikitlearn-plain colored"></i> Scikit-Learn</div>
+                <div class="tech-card"><i class="devicon-numpy-plain colored"></i> NumPy & SciPy</div>
+                <div class="tech-card">🌲 Random Forest & Isolation Forest</div>
+                <div class="tech-card">🔍 JA3 / JA3S TLS Fingerprinting</div>
+                <div class="tech-card">🦙 Ollama Local LLM</div>
+            </div>
+        </div>
+
+        <!-- Security & Ledger -->
+        <div class="layer crypto">
+            <div class="layer-title">4. Forensic Ledger & Standards</div>
+            <div class="tech-grid">
+                <div class="tech-card">🔐 Ed25519 Cryptography</div>
+                <div class="tech-card">🔗 SHA-256 Merkle Chain</div>
+                <div class="tech-card">🎯 MITRE ATT&CK Taxonomy</div>
+                <div class="tech-card">📦 STIX 2.1 Threat Intel</div>
+            </div>
+        </div>
+
+        <!-- Infra & Testing -->
+        <div class="layer infra">
+            <div class="layer-title">5. Infrastructure & Testing</div>
+            <div class="tech-grid">
+                <div class="tech-card"><i class="devicon-docker-plain colored"></i> Docker & Compose</div>
+                <div class="tech-card"><i class="devicon-sqlite-plain colored"></i> SQLite Edge DB</div>
+                <div class="tech-card"><i class="devicon-pytest-plain colored"></i> Pytest (AST Verification)</div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>
