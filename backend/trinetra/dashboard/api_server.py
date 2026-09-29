@@ -253,15 +253,12 @@ if HAS_FASTAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:8765",
-            "http://127.0.0.1:8765",
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-        ],
-        allow_methods=["GET"],
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
         allow_headers=["*"],
     )
+
 
     @app.get("/", include_in_schema=False)
     async def root():
