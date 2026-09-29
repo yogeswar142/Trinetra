@@ -287,6 +287,15 @@ if HAS_FASTAPI:
     async def verify_ledger():
         t0 = time.monotonic()
         blocks = _read_ledger_blocks()
+        if not LEDGER_PATH.exists() or len(blocks) == 0:
+            elapsed_ms = (time.monotonic() - t0) * 1000
+            return JSONResponse({
+                "ok": True,
+                "blocks_verified": 0,
+                "errors": [],
+                "verify_time_ms": elapsed_ms,
+                "note": "Genesis state — empty ledger ready for enclave sealing",
+            })
         try:
             from cryptography.hazmat.primitives.serialization import load_pem_public_key
             from trinetra.ledger import verify_chain as _verify
