@@ -1,0 +1,7 @@
+Tranco List Terms of Use (NDSS 2019)
+Canonical Host: https://tranco-list.eu/
+Authors: Victor Le Pochat, Tom Van Goethem, Samaneh Tajalizadehkhoob, Maciej Korczynski, Wouter Joosen
+License: Permitted for non-commercial academic and security research.
+The Tranco list aggregates rankings from Cisco Umbrella, Majestic (CC BY 3.0),
+Chrome User Experience Report (CrUX, CC BY-SA 4.0), and Cloudflare Radar (CC BY-NC 4.0).
+Quote: "The Tranco list is a research-oriented top sites ranking... available for non-commercial security research."

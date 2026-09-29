@@ -1,0 +1,53 @@
+{
+  "benchmark_version": "v3",
+  "benchmark_scope": "Phase 2a: Ingest + FlowTable + WindowedFeatureEngine (NO detector models, NO inference)",
+  "cadence_commitment": "A full-pipeline benchmark will be executed and recorded at the end of every sub-phase.",
+  "system_telemetry": {
+    "timestamp_utc": "2026-09-29T16:44:03.823086+00:00",
+    "platform_system": "Windows",
+    "platform_release": "10",
+    "platform_machine": "AMD64",
+    "processor": "ARMv8 (64-bit) Family 8 Model 2 Revision 101, Qualcomm Technologies Inc",
+    "cpu_count_logical": 6,
+    "python_version": "3.11.9",
+    "power_plugged": false,
+    "battery_percent": 65,
+    "ram_total_gb": 15.63,
+    "ram_available_gb": 3.75
+  },
+  "realistic_mixed_500k": {
+    "throughput": {
+      "repetitions": 2,
+      "packets_processed": 500000,
+      "packets_per_second": {
+        "median": 36277.79,
+        "min": 35312.96,
+        "max": 36277.79,
+        "raw": [
+          36277.79,
+          35312.96
+        ]
+      },
+      "throughput_mbps": {
+        "median": 187.66,
+        "min": 182.67,
+        "max": 187.66
+      }
+    },
+    "latency": {
+      "count": 30000,
+      "mean_us": 22.156,
+      "p50_us": 18.8,
+      "p95_us": 45.8,
+      "p99_us": 53.5,
+      "p99_9_us": 137.6,
+      "max_us": 1976.7
+    },
+    "memory": {
+      "packets_processed": 50000,
+      "rss_initial_mb": 307.29,
+      "rss_peak_mb": 308.67,
+      "rss_delta_mb": 1.38
+    }
+  }
+}

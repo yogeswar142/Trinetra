@@ -1,0 +1,6 @@
+abuse.ch SSLBL JA3 Fingerprints Terms of Use
+Canonical Host: https://sslbl.abuse.ch/ja3-fingerprints/
+License: CC0 1.0 Universal (Public Domain Dedication)
+Quote: "All data provided by abuse.ch is licensed under CC0 (Public Domain Dedication).
+You can copy, modify, distribute and perform the work, even for commercial purposes,
+all without asking permission."
