@@ -9,6 +9,7 @@ from trinetra.detectors.ddos import DdosDetector
 from trinetra.detectors.dga import DgaDetector, DnsTunnelDetector
 from trinetra.detectors.exfil import ExfiltrationDetector, FlowExfilFeatures
 from trinetra.detectors.port_scan import PortScanDetector
+from trinetra.detectors.tls_malware import TlsMalwareDetector
 
 __all__ = [
     "BaseDetector",
@@ -20,4 +21,5 @@ __all__ = [
     "PortScanDetector",
     "ExfiltrationDetector",
     "FlowExfilFeatures",
+    "TlsMalwareDetector",
 ]
