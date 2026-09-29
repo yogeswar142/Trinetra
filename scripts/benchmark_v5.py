@@ -39,6 +39,7 @@ from trinetra.detectors.beacon import BeaconDetector
 from trinetra.detectors.ddos import DdosDetector
 from trinetra.detectors.dga import DgaDetector, DnsTunnelDetector
 from trinetra.detectors.port_scan import PortScanDetector
+from trinetra.detectors.tls_malware import TlsMalwareDetector
 from trinetra.features.windowed_engine import WindowedFeatureEngine
 from trinetra.ingest.flow_table import FlowTable
 from trinetra.ingest.pcap import PcapIngest
@@ -75,7 +76,7 @@ def collect_telemetry() -> dict:
         "processor": platform.processor(),
         "cpu_count_logical": multiprocessing.cpu_count(),
         "python_version": platform.python_version(),
-        "python_architecture": "x64 Python emulated on ARM64 Windows (Snapdragon ARMv8, platform.machine()='AMD64')",
+        "python_architecture": platform.architecture()[0],
         "power_plugged": battery.power_plugged if battery else None,
         "battery_percent": battery.percent if battery else None,
         "power_plan": get_windows_power_plan(),
@@ -107,8 +108,9 @@ def init_full_pipeline_v5(tmp_ledger_dir: Path):
     beacon_det = BeaconDetector(model=beacon_pkg["model"], calibrator=beacon_pkg["calibrator"])
     dga_det = DgaDetector(model=dga_pkg["model"], calibrator=dga_pkg["calibrator"])
     tunnel_det = DnsTunnelDetector(model=tunnel_pkg["model"], calibrator=tunnel_pkg["calibrator"])
+    tls_det = TlsMalwareDetector()  # T-d: JA3 blacklist + PST anomaly — no model file needed
 
-    return ingest, table, engine, ddos_det, ps_det, beacon_det, dga_det, tunnel_det, ledger
+    return ingest, table, engine, ddos_det, ps_det, beacon_det, dga_det, tunnel_det, tls_det, ledger
 
 
 def benchmark_v5_throughput(pcap_path: Path, tmp_dir: Path, max_packets: int | None = None, repetitions: int = 2) -> dict:
@@ -120,7 +122,7 @@ def benchmark_v5_throughput(pcap_path: Path, tmp_dir: Path, max_packets: int | N
     for r in range(repetitions):
         run_dir = tmp_dir / f"tp_run_{r}"
         run_dir.mkdir(parents=True, exist_ok=True)
-        ingest, table, engine, ddos_det, ps_det, beacon_det, dga_det, tunnel_det, ledger = init_full_pipeline_v5(run_dir)
+        ingest, table, engine, ddos_det, ps_det, beacon_det, dga_det, tunnel_det, tls_det, ledger = init_full_pipeline_v5(run_dir)
 
         count = 0
         with open(pcap_path, "rb") as f:
@@ -169,6 +171,17 @@ def benchmark_v5_throughput(pcap_path: Path, tmp_dir: Path, max_packets: int | N
                                 ledger.add_alert(a_tun)
                                 alerts_by_threat[a_tun.threat_class.value] = alerts_by_threat.get(a_tun.threat_class.value, 0) + 1
 
+                    # T-d: TLS Malware (JA3 blacklist + PST sequence anomaly)
+                    if ev.dst_port in (443, 8443, 8080) or ev.src_port in (443, 8443):
+                        flow_id = f"{ev.src_ip}:{ev.src_port}-{ev.dst_ip}:{ev.dst_port}"
+                        tls_feat = engine.get_tls_features(flow_id)
+                        if tls_feat:
+                            a_tls = tls_det.evaluate(tls_feat, ev.timestamp)
+                            if a_tls:
+                                ledger.add_alert(a_tls)
+                                alerts_by_threat[a_tls.threat_class.value] = alerts_by_threat.get(a_tls.threat_class.value, 0) + 1
+
+
                 count += 1
                 if max_packets and count >= max_packets:
                     break
@@ -208,7 +221,7 @@ def benchmark_v5_throughput(pcap_path: Path, tmp_dir: Path, max_packets: int | N
 def benchmark_v5_latency(pcap_path: Path, tmp_dir: Path, max_packets: int = 30_000) -> dict:
     run_dir = tmp_dir / "lat_run"
     run_dir.mkdir(parents=True, exist_ok=True)
-    ingest, table, engine, ddos_det, ps_det, beacon_det, dga_det, tunnel_det, ledger = init_full_pipeline_v5(run_dir)
+    ingest, table, engine, ddos_det, ps_det, beacon_det, dga_det, tunnel_det, tls_det, ledger = init_full_pipeline_v5(run_dir)
 
     service_times_ns: list[int] = []
     pipeline_lags_ns: list[int] = []
@@ -273,7 +286,7 @@ def benchmark_v5_memory(pcap_path: Path, tmp_dir: Path, max_packets: int = 100_0
     rss_start = proc.memory_info().rss
     rss_peak = rss_start
 
-    ingest, table, engine, ddos_det, ps_det, beacon_det, dga_det, tunnel_det, ledger = init_full_pipeline_v5(run_dir)
+    ingest, table, engine, ddos_det, ps_det, beacon_det, dga_det, tunnel_det, tls_det, ledger = init_full_pipeline_v5(run_dir)
 
     with open(pcap_path, "rb") as f:
         count = 0

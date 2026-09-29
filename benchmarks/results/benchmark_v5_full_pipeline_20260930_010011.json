@@ -1,0 +1,83 @@
+{
+  "benchmark_version": "5.0.0-phase2c",
+  "description": "Full End-to-End Trinetra Pipeline: Ingest + FlowTable + FeatureEngine + 5 Threat Detectors (T-a, T-e, T-b, T-c) + Deduplicator + Merkle Ledger",
+  "telemetry": {
+    "timestamp_utc": "2026-09-29T19:28:32.801946+00:00",
+    "platform_system": "Linux",
+    "platform_release": "7.0.0-34-generic",
+    "platform_machine": "x86_64",
+    "processor": "x86_64",
+    "cpu_count_logical": 12,
+    "python_version": "3.12.3",
+    "python_architecture": "64bit",
+    "power_plugged": true,
+    "battery_percent": 100.0,
+    "power_plan": "Unknown",
+    "ram_total_gb": 15.26,
+    "ram_available_gb": 7.18
+  },
+  "throughput": {
+    "repetitions": 2,
+    "packets_processed": 50200,
+    "alerts_by_threat_class": {
+      "VOLUMETRIC_DDOS": 7,
+      "PORT_SCANNING": 32
+    },
+    "total_alerts_emitted": 39,
+    "packets_per_second": {
+      "median": 7237.26,
+      "min": 7075.19,
+      "max": 7237.26,
+      "raw": [
+        7075.19,
+        7237.26
+      ]
+    },
+    "throughput_mbps": {
+      "median": 21.51,
+      "min": 21.03,
+      "max": 21.51
+    }
+  },
+  "latency": {
+    "packets_sampled": 30000,
+    "latency_definition_a_service_time": {
+      "count": 30000,
+      "mean_us": 115.15,
+      "p50_us": 103.96,
+      "p95_us": 188.5,
+      "p99_us": 243.64,
+      "max_us": 21666.76
+    },
+    "latency_definition_b_ingest_to_alert_lag": {
+      "count": 30000,
+      "mean_us": 2687.09,
+      "p50_us": 2555.2,
+      "p95_us": 3760.51,
+      "p99_us": 5096.83,
+      "max_us": 162807.83
+    }
+  },
+  "memory": {
+    "packets_processed": 50200,
+    "rss_start_mb": 329.38,
+    "rss_peak_mb": 351.9,
+    "rss_end_mb": 351.9,
+    "rss_delta_mb": 22.52
+  },
+  "eviction_stress": {
+    "packets_processed": 20000,
+    "elapsed_seconds": 0.1419,
+    "eviction_counts": {
+      "dst": 9500,
+      "src": 19500,
+      "pair": 19500,
+      "domain": 0,
+      "tls": 0
+    },
+    "rss_start_mb": 327.3,
+    "rss_end_mb": 327.3,
+    "rss_delta_mb": 0.0,
+    "memory_plateau_preserved": true
+  }
+}
