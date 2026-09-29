@@ -169,37 +169,39 @@ make train            # Retrain all 6 ML models on PCAP-derived features
 
 ---
 
-## 🖥️ SOC Dashboard
+## 🖥️ SOC Dashboard & Terminal UI
 
-Trinetra ships a dual-mode SOC dashboard for real-time threat monitoring and forensic review:
+Trinetra ships dual production interfaces for real-time threat monitoring and forensic review:
 
-### Web Dashboard (Recommended)
-A premium dark-mode SOC interface accessible from any browser:
+### 1. Next.js 15 Web SOC Dashboard (Production Ready)
+A high-performance dark-mode SOC console built with **Next.js 15 (App Router)**, **TypeScript**, **Recharts**, and an interactive 3D WebGL globe (**Cobe**):
 ```bash
-make dashboard
-# Open http://localhost:8765 in your browser
+# Start Next.js Frontend (from root directory)
+cd frontend
+npm run dev
+# Open http://localhost:3000 in your browser
 ```
 Features:
-- 🟠 **Live alert feed** — all 6 threat classes (T-a through T-f) with severity badges and timestamps
-- 📊 **Threat distribution donut chart** — real-time proportional breakdown by class
-- 🔗 **Forensic ledger panel** — block height, head hash, and one-click chain verification
-- 🔍 **Evidence viewer** — click any alert row to inspect the full ML evidence chain
-- ✅ **Verify Chain button** — triggers Ed25519 + Merkle root integrity verification in-browser
-- 📡 **REST API** at `/api/alerts`, `/api/ledger`, `/api/health` (Swagger docs at `/api/docs`)
+- 🟠 **Live Alert Feed** — Real-time streaming of all 6 threat vectors (T-a through T-f) with severity tags.
+- 📊 **Threat Distribution Donut Chart** — Live proportional breakdown of incoming attack classes.
+- 🌐 **3D Threat Globe** — Interactive WebGL visualization mapping inbound/outbound IP vectors.
+- 🔗 **Forensic Ledger Inspector** — Live Merkle root display, block height, and in-browser chain verification.
+- 🔍 **Evidence Workbench** — Click any alert to inspect feature values, thresholds, and ML model justifications.
 
-### CLI Dashboard
-Rich-text terminal dashboard for headless or SSH operator sessions:
+### 2. Rich Terminal CLI Dashboard
+An operator CLI dashboard with Sanskrit branding (*"त्रि नेत्र - The Third Eye"*) for headless or SSH sessions:
 ```bash
-make dashboard-cli
+trinetra
 ```
 
-### Docker (Air-Gapped Deployment)
-Sensor on `enclave-net` (internal, zero external routing) + dashboard on `dashboard-net` (operator-reachable):
+### 3. Docker Air-Gapped Deployment
+Enforce physical network isolation using Docker bridge networks:
 ```bash
-docker compose up
-# Dashboard: http://localhost:8765
-# Sensor: fully air-gapped inside enclave-net (internal: true)
+docker compose up -d
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:8000
 ```
+For full bare-metal and containerized deployment instructions, see the **[Production Deployment Guide](docs/deployment_guide.md)**.
 
 ---
 
@@ -209,34 +211,33 @@ docker compose up
 ├── backend/
 │   └── trinetra/
 │       ├── __init__.py
-│       ├── config.py           # EnclaveConfig & ScenarioTopology (Subnet overrides)
+│       ├── cli.py              # Sanskrit-branded Rich CLI terminal interface
+│       ├── config.py           # EnclaveConfig & ScenarioTopology overrides
 │       ├── schemas.py          # Pydantic v2 schemas: AlertRecord, FlowEvent, BlockRecord
 │       ├── ledger.py           # Hash-chained Ed25519-signed Merkle forensic ledger
 │       ├── simulator.py        # Synthetic test scenarios with direction assertions
-│       └── features/
-│           ├── entropy.py      # Shannon entropy extraction routines
-│           ├── periodicity.py  # FFT, Lomb-Scargle, and Autocorrelation analysis
-│           └── tls_parser.py   # JA3, JA3S, and Packet Size & Timing (PST) sequences
+│       ├── dashboard/          # FastAPI REST & WebSocket streaming server
+│       ├── detectors/          # T-a through T-f Machine Learning threat detectors
+│       └── features/           # Entropy, Periodicity (FFT), and TLS JA3/JA3S/PST parsers
+├── frontend/                   # Next.js 15 + TypeScript SOC Dashboard UI
+│   ├── src/app/                # App Router pages (Overview, Alerts, Globe, Ledger, Settings)
+│   └── src/components/         # Reusable glassmorphic UI components & charts
 ├── config/                     # Enclave TOML runtime configurations
 ├── data/
-│   ├── fixtures/               # PCAP test captures (.gitkeep)
-│   ├── ledger/                 # Persistent audit chains (.gitkeep)
-│   └── signatures/             # Sensor Ed25519 public/private keys (.gitkeep)
-├── docker/
-│   └── Dockerfile.sensor       # Production-ready air-gapped sensor image
-├── scripts/
-│   └── benchmark_pipeline.py   # Hardware-stamped pipeline benchmark script
-├── tests/
-│   ├── test_config.py          # Config validation & direction classification tests
-│   ├── test_ledger.py          # Merkle root, block chaining & tamper-evidence tests
-│   ├── test_no_transmit.py     # AST & runtime checks enforcing passive-only ingest
-│   ├── test_schemas.py         # 5 mandatory fields & Pydantic constraint tests
-│   └── test_simulator.py       # Scenarios (DDoS=INBOUND, Exfil=OUTBOUND, Scan=INBOUND)
+│   ├── captures/               # Scapy tool-realistic attack PCAPs
+│   ├── features/               # Extracted NPZ feature matrices
+│   ├── models/                 # Calibrated & signed scikit-learn model artifacts
+│   └── signatures/             # Sensor Ed25519 public/private keys
+├── docs/
+│   ├── deployment_guide.md     # Air-gapped production deployment guide
+│   └── model_cards/            # ML feature documentation & train/val split cards
+├── ppt/                        # Pitch deck assets & HTML tech-stack graphic
+├── scripts/                    # PCAP generation, feature extraction, & benchmark runners
+├── tests/                      # 214 passing unit, integration, & AST compliance tests
 ├── docker-compose.yml          # Enclave-isolated Docker bridge network
-├── Makefile                    # Standard developer targets: test, benchmark, lint
+├── Makefile                    # Developer targets: test, benchmark, dashboard, train
 ├── ps_compliance_matrix.md     # Requirement-to-code traceability matrix
-├── research_notes.md           # Research dossier & verified competitor survey
-├── trinetra_master_plan.md     # Phased execution plan & technical decisions
+├── README.md                   # Project documentation
 └── pyproject.toml              # Build metadata & dependency definitions
 ```
 
@@ -244,17 +245,19 @@ docker compose up
 
 ## 📋 PS Compliance Matrix
 
-Every single aspect of PS 26145 is explicitly mapped to code locations in [`ps_compliance_matrix.md`](ps_compliance_matrix.md):
+Every single requirement of PS 26145 is explicitly mapped to code locations in [`ps_compliance_matrix.md`](ps_compliance_matrix.md):
 * **Ingest & Air-Gap Enforcement:** [`tests/test_no_transmit.py`](tests/test_no_transmit.py)
 * **Standardized 5-Field Alert Schema:** [`backend/trinetra/schemas.py`](backend/trinetra/schemas.py)
 * **Cryptographic Forensic Chain:** [`backend/trinetra/ledger.py`](backend/trinetra/ledger.py)
-* **Dynamic Scenario Direction Control:** [`backend/trinetra/config.py`](backend/trinetra/config.py)
+* **TLS Metadata & PST Sequences:** [`backend/trinetra/features/tls_parser.py`](backend/trinetra/features/tls_parser.py)
 
 ---
 
 ## 👥 Contributors & SIH 2026 Team
 
-* **Project Lead / Lead Developer:** Yogeswar ([@yogeswar142](https://github.com/yogeswar142))
+* **Yogeswar ([@yogeswar142](https://github.com/yogeswar142))** — Lead Architect & Core Developer
+* **Anudeep ([@anudeep2006](https://github.com/anudeep2006))** — AI/ML Pipelines & Frontend SOC Engineering
 * **Organization:** National Technical Research Organisation (NTRO) / Smart India Hackathon 2026
 
 *Crafted with precision for national security network defense.*
+
