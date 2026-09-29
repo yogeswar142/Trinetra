@@ -27,3 +27,5 @@ This model detects Port Scanning & Reconnaissance passively from statistical pac
 - **Group Splitting:** Partitioned strictly across independent /24 subnets.
 - **Probe Scenario Leakage:** PASS (Feature space does not trivially predict scenario run IDs).
 - **Deserialization Security:** Pre-load SHA-256 hash verified against signed Ed25519 manifest.
+- **Pickle Risk:** joblib serialization uses Python's pickle protocol. Load ONLY from the signed
+  manifest-verified path. Never load untrusted model files — pickle allows arbitrary code execution.

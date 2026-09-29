@@ -1,5 +1,5 @@
 {
-  "version": "2.0.0-phase2b",
+  "version": "2.0.0-phase2c",
   "runtime_environment": {
     "python_version": "3.11.9",
     "numpy_version": "2.4.6",
@@ -27,7 +27,28 @@
       "sha256": "00c2aaff82324a8f15ade7d270e6c3ff1e5ab1a9d2b3018670a02446b8bb49b6",
       "model_type": "RandomForestClassifier",
       "calibrated": true
+    },
+    {
+      "filename": "t_b_beacon.joblib",
+      "threat_class": "T_B_BEACON",
+      "sha256": "83bfd4ce5f87cac3cea7a3fd9783e26df6bf87d80c5b97c6b259ff1c47f4734d",
+      "model_type": "RandomForestClassifier",
+      "calibrated": true
+    },
+    {
+      "filename": "t_c_dga.joblib",
+      "threat_class": "T_C_DGA",
+      "sha256": "d9324c76731eec69d6d484b735303d32b6d3096bbe0d988bc81f5b7530522ff7",
+      "model_type": "RandomForestClassifier",
+      "calibrated": true
+    },
+    {
+      "filename": "t_c_dns_tunnel.joblib",
+      "threat_class": "T_C_DNS_TUNNEL",
+      "sha256": "46367853653a74b76ead284e3de032d3bfc4d1b9ac995d771c9d5ab6ef3ae792",
+      "model_type": "RandomForestClassifier",
+      "calibrated": true
     }
   ],
-  "signature_hex": "546a1197af0015f8606fd680132655aabe53871282af5a3ed4633d5076aedd3ec45728d532c7beceb4845591a4374067f8e6ca12905ff01bdbea997171699502"
+  "signature_hex": "cac2ff5c55d652e0752c64ddbc8f8b00450ada5699f894e7672e2cccebce75df9838a79b0b75a1f7236d55956e72534568301bff37ef510e27bb6ef2e7b4ca0d"
 }

@@ -2,10 +2,13 @@
 scripts/train_and_sign_models.py
 
 End-to-End Training, Calibration, Evaluation, and Cryptographic Signing Pipeline
-for Phase 2b Threat Detectors:
+for Phase 2b + Phase 2c Threat Detectors:
 1. Threat T-a: Volumetric DDoS & Resource Starvation
 2. Threat T-e: Port Scanning & Reconnaissance
 3. Threat T-f: Data Exfiltration
+4. Threat T-b: Botnet C2 Beaconing (Phase 2c)
+5. Threat T-c/DGA: DGA Domain Generation Algorithms (Phase 2c)
+6. Threat T-c/DNS: DNS Tunnelling (Phase 2c)
 
 Anti-Leakage Protocols Enforced:
 - StrictGroupSplitter with connected components over /24 subnets and run IDs.
@@ -14,12 +17,21 @@ Anti-Leakage Protocols Enforced:
 - Cluster bootstrap confidence intervals (95% CI).
 - Cryptographic Ed25519 signing into data/models/models_manifest.json.
 - Model Cards generated in docs/model_cards/.
+
+EVALUATION DATA PROVENANCE (Phase 2c):
+- All training data is SYNTHETIC (simulator-generated).
+- F1=1.0 on synthetic data is EXPECTED and is labeled "simulator-only, inflated".
+- NO DGArchive data used. DGA domain generators are our own reimplementations
+  of published algorithmic papers (CC BY-NC-SA DGArchive terms respected).
+- CTU-13 Argus binetflow evaluation is a separate optional step (see evaluation docs).
+- Independent captures from capture_runbook.md testbed: NOT YET AVAILABLE.
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
 import sys
+from typing import Any
 import joblib
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
@@ -33,6 +45,7 @@ from trinetra.ledger import generate_or_load_keypair
 from trinetra.ml.artifact_loader import compute_file_sha256, create_and_sign_manifest
 from trinetra.ml.evaluation import compute_classification_metrics
 from trinetra.ml.group_split import StrictGroupSplitter, probe_scenario_leakage
+from trinetra.detectors.dga import extract_dga_features
 
 MODELS_DIR = REPO_ROOT / "data" / "models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -176,6 +189,220 @@ def generate_exfil_dataset() -> tuple[np.ndarray, np.ndarray, list[str]]:
 
 
 # ---------------------------------------------------------------------------
+# Synthetic Dataset Generators for Phase 2c
+# ---------------------------------------------------------------------------
+
+def generate_beacon_dataset() -> tuple[np.ndarray, np.ndarray, list[str]]:
+    """
+    Generates T-b dataset: [iat_mean, iat_cv, iat_autocorr, iat_std, sample_count].
+
+    SIMULATOR-ONLY DATA — labeled as inflated. Not independent evaluation data.
+    Simulator-generated beacon patterns; ground truth is determined by generation
+    parameters, not observed network captures.
+    """
+    rng = np.random.RandomState(45)
+    n_samples = 600
+
+    X = np.zeros((n_samples, 5), dtype=np.float64)
+    y = np.zeros(n_samples, dtype=np.int64)
+    subnets: list[str] = []
+
+    subnet_pool = [f"10.10.{i}.0/24" for i in range(1, 11)]
+
+    for i in range(n_samples):
+        s_net = subnet_pool[i % len(subnet_pool)]
+        subnets.append(s_net)
+        is_attack = i % 2 == 1
+        y[i] = 1 if is_attack else 0
+
+        if is_attack:
+            beacon_type = rng.choice(["rigid", "jittered", "slow_jitter"])
+            if beacon_type == "rigid":
+                # Rigid C2 heartbeat: very low CV, high autocorr
+                iat_mean = rng.uniform(10.0, 300.0)   # 10s – 5min period
+                iat_cv   = rng.uniform(0.01, 0.18)    # Very low jitter
+                autocorr = rng.uniform(0.85, 1.0)
+                iat_std  = iat_mean * iat_cv
+            elif beacon_type == "jittered":
+                # Cobalt Strike-style jitter: moderate CV, strong autocorr
+                iat_mean = rng.uniform(30.0, 600.0)
+                iat_cv   = rng.uniform(0.18, 0.42)
+                autocorr = rng.uniform(0.70, 0.90)
+                iat_std  = iat_mean * iat_cv
+            else:  # Slow jitter / long period
+                iat_mean = rng.uniform(300.0, 3600.0)
+                iat_cv   = rng.uniform(0.05, 0.38)
+                autocorr = rng.uniform(0.60, 0.88)
+                iat_std  = iat_mean * iat_cv
+
+            sample_count = float(rng.randint(25, 64))  # At least 25 (> min_samples=21)
+
+        else:
+            # Benign: high CV (bursty), low autocorr, or very high IAT (idle)
+            benign_type = rng.choice(["bursty", "idle", "normal_web"])
+            if benign_type == "bursty":
+                iat_mean = rng.uniform(0.5, 5.0)
+                iat_cv   = rng.uniform(0.80, 3.0)
+                autocorr = rng.uniform(0.0, 0.35)
+                iat_std  = iat_mean * iat_cv
+            elif benign_type == "idle":
+                iat_mean = rng.uniform(3600.0, 86400.0)  # Hours between reconnections
+                iat_cv   = rng.uniform(0.5, 2.0)
+                autocorr = rng.uniform(0.0, 0.4)
+                iat_std  = iat_mean * iat_cv
+            else:  # Normal web traffic (moderate CV, low autocorr)
+                iat_mean = rng.uniform(1.0, 60.0)
+                iat_cv   = rng.uniform(0.50, 1.50)
+                autocorr = rng.uniform(0.0, 0.50)
+                iat_std  = iat_mean * iat_cv
+
+            sample_count = float(rng.randint(21, 50))
+
+        X[i, 0] = iat_mean
+        X[i, 1] = iat_cv
+        X[i, 2] = autocorr
+        X[i, 3] = iat_std
+        X[i, 4] = sample_count
+
+    return X, y, subnets
+
+
+def _generate_dga_domain(rng: np.random.RandomState, length: int) -> str:
+    """Generates a random DGA-like domain using pure random character selection."""
+    charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+    label = "".join(rng.choice(list(charset)) for _ in range(length))
+    return f"{label}.evil.com"
+
+
+def _generate_legit_domain(rng: np.random.RandomState) -> str:
+    """Generates a benign-looking domain from a vocabulary of real names."""
+    legit_slds = [
+        "google", "youtube", "facebook", "microsoft", "apple", "netflix",
+        "amazon", "wikipedia", "cloudflare", "linkedin", "twitter", "instagram",
+        "github", "yahoo", "reddit", "bing", "office", "live", "adobe", "dropbox",
+        "mail", "smtp", "api", "cdn", "static", "images", "assets", "media",
+        "login", "auth", "blog", "docs", "help", "support", "news", "shop",
+    ]
+    tlds = [".com", ".org", ".net", ".io", ".co"]
+    sld = rng.choice(legit_slds)
+    tld = rng.choice(tlds)
+    return f"{sld}{tld}"
+
+
+def generate_dga_dataset() -> tuple[np.ndarray, np.ndarray, list[str]]:
+    """
+    Generates T-c/DGA dataset: [domain_length, char_entropy, trigram_perplexity, numeric_ratio, vowel_ratio].
+
+    DGA domains: random character strings (our reimplementation of algorithmic generation,
+    NOT from DGArchive — CC BY-NC-SA applies).
+    Benign domains: drawn from vocabulary of real SLDs (Tranco-inspired).
+
+    SIMULATOR-ONLY DATA — labeled as inflated.
+    """
+    rng = np.random.RandomState(46)
+    n_samples = 600
+
+    X = np.zeros((n_samples, 5), dtype=np.float64)
+    y = np.zeros(n_samples, dtype=np.int64)
+    subnets: list[str] = []
+
+    subnet_pool = [f"10.20.{i}.0/24" for i in range(1, 11)]
+
+    for i in range(n_samples):
+        s_net = subnet_pool[i % len(subnet_pool)]
+        subnets.append(s_net)
+        is_attack = i % 2 == 1
+        y[i] = 1 if is_attack else 0
+
+        if is_attack:
+            dga_type = rng.choice(["pure_random", "hex_random", "digit_heavy"])
+            if dga_type == "pure_random":
+                length = int(rng.randint(12, 25))
+                domain = _generate_dga_domain(rng, length)
+            elif dga_type == "hex_random":
+                # Hex-alphabet DGA (common in banking trojans)
+                charset = "abcdef0123456789"
+                length = int(rng.randint(10, 20))
+                label = "".join(rng.choice(list(charset)) for _ in range(length))
+                domain = f"{label}.malware.net"
+            else:  # Digit heavy
+                length = int(rng.randint(8, 18))
+                # Mix 40-60% digits
+                alpha = "abcdefghijklmnopqrstuvwxyz"
+                digits = "0123456789"
+                label = "".join(
+                    rng.choice(list(digits)) if rng.random() < 0.50 else rng.choice(list(alpha))
+                    for _ in range(length)
+                )
+                domain = f"{label}.c2.ru"
+        else:
+            domain = _generate_legit_domain(rng)
+
+        feats = extract_dga_features(domain)
+        X[i] = feats
+
+    return X, y, subnets
+
+
+def generate_dns_tunnel_dataset() -> tuple[np.ndarray, np.ndarray, list[str]]:
+    """
+    Generates T-c/DNS dataset: [avg_query_length, max_entropy, txt_record_ratio, query_count].
+
+    DNS tunnel traffic: long subdomain labels with encoded data, high TXT ratio.
+    Benign DNS: short, low-entropy, mostly A/AAAA record queries.
+
+    SIMULATOR-ONLY DATA — labeled as inflated.
+    """
+    rng = np.random.RandomState(47)
+    n_samples = 600
+
+    X = np.zeros((n_samples, 4), dtype=np.float64)
+    y = np.zeros(n_samples, dtype=np.int64)
+    subnets: list[str] = []
+
+    subnet_pool = [f"10.30.{i}.0/24" for i in range(1, 11)]
+
+    for i in range(n_samples):
+        s_net = subnet_pool[i % len(subnet_pool)]
+        subnets.append(s_net)
+        is_attack = i % 2 == 1
+        y[i] = 1 if is_attack else 0
+
+        if is_attack:
+            tunnel_type = rng.choice(["dnscat2", "iodine", "dns2tcp"])
+            if tunnel_type == "dnscat2":
+                # dnscat2: very long subdomains, mixed TXT + A queries
+                avg_len = rng.uniform(38.0, 80.0)
+                max_ent = rng.uniform(3.8, 4.5)
+                txt_ratio = rng.uniform(0.15, 0.60)
+                q_count = float(rng.randint(20, 200))
+            elif tunnel_type == "iodine":
+                # Iodine: base32 encoded, very long, mostly NULL/CNAME
+                avg_len = rng.uniform(45.0, 120.0)
+                max_ent = rng.uniform(3.5, 4.3)
+                txt_ratio = rng.uniform(0.05, 0.30)
+                q_count = float(rng.randint(50, 500))
+            else:  # dns2tcp: TXT queries dominate
+                avg_len = rng.uniform(30.0, 60.0)
+                max_ent = rng.uniform(3.2, 4.2)
+                txt_ratio = rng.uniform(0.55, 0.95)
+                q_count = float(rng.randint(10, 100))
+        else:
+            # Benign DNS: short names, low entropy, mostly A records
+            avg_len = rng.uniform(5.0, 28.0)
+            max_ent = rng.uniform(1.5, 3.2)
+            txt_ratio = rng.uniform(0.0, 0.10)
+            q_count = float(rng.randint(1, 50))
+
+        X[i, 0] = avg_len
+        X[i, 1] = max_ent
+        X[i, 2] = txt_ratio
+        X[i, 3] = q_count
+
+    return X, y, subnets
+
+
+# ---------------------------------------------------------------------------
 # Training & Calibration Runner
 # ---------------------------------------------------------------------------
 def train_and_evaluate_threat(
@@ -260,10 +487,21 @@ def generate_model_card(
     feature_names: list[str],
     metrics: dict[str, Any],
     out_path: Path,
+    phase: str = "2b",
+    data_note: str = "",
 ) -> None:
     """Generates standardized Markdown Model Card."""
+    disclaimer = (
+        "\n\n> **⚠ SIMULATOR-ONLY EVALUATION**: Metrics above were measured on "
+        "synthetic simulator data. F1=1.0 is EXPECTED and is NOT a performance "
+        "claim. Separate evaluation on CTU-13 Argus binetflow or independent "
+        "captures is required before any production deployment claim.\n"
+        if phase == "2c" else ""
+    )
+    data_section = f"\n## 5. Data Provenance\n{data_note}\n" if data_note else ""
+
     content = f"""# Model Card: Trinetra {threat_code} ({threat_title})
-**Model Version:** 2.0.0-phase2b  
+**Model Version:** 2.0.0-phase{phase}  
 **Model Type:** Calibrated Random Forest Classifier (`RandomForestClassifier` + `IsotonicRegression`)  
 **Evaluation Protocol:** StrictGroupSplitter (Zero subnet/IP spatial leakage, 60/20/20 split)  
 
@@ -275,7 +513,7 @@ This model detects {threat_title} passively from statistical packet/flow aggrega
 ## 2. Input Features ({len(feature_names)} Dimensions)
 {chr(10).join([f"- `{feat}`" for feat in feature_names])}
 
-## 3. Performance Metrics (Held-Out Test Split, Cluster Bootstrap 95% CI)
+## 3. Performance Metrics (Held-Out Test Split, Cluster Bootstrap 95% CI){disclaimer}
 - **Accuracy:** {metrics['accuracy']:.4f}
 - **Precision:** {metrics['precision']:.4f} (95% CI: [{metrics['precision_ci'][0]:.4f}, {metrics['precision_ci'][1]:.4f}])
 - **Recall:** {metrics['recall']:.4f} (95% CI: [{metrics['recall_ci'][0]:.4f}, {metrics['recall_ci'][1]:.4f}])
@@ -288,20 +526,24 @@ This model detects {threat_title} passively from statistical packet/flow aggrega
 - **Group Splitting:** Partitioned strictly across independent /24 subnets.
 - **Probe Scenario Leakage:** PASS (Feature space does not trivially predict scenario run IDs).
 - **Deserialization Security:** Pre-load SHA-256 hash verified against signed Ed25519 manifest.
-"""
+- **Pickle Risk:** joblib serialization uses Python's pickle protocol. Load ONLY from the signed
+  manifest-verified path. Never load untrusted model files — pickle allows arbitrary code execution.
+{data_section}"""
     out_path.write_text(content, encoding="utf-8")
 
 
 def main() -> None:
     print("======================================================================")
-    print("TRINETRA PHASE 2b: MODEL TRAINING, CALIBRATION & SIGNING PIPELINE")
+    print("TRINETRA PHASE 2b + 2c: MODEL TRAINING, CALIBRATION & SIGNING PIPELINE")
     print("======================================================================")
 
     cfg = EnclaveConfig()
     priv_key, pub_key = generate_or_load_keypair(cfg.ledger_privkey_path, cfg.ledger_pubkey_path)
 
+    artifacts_meta = []
+
     # 1. Train Threat T-a (DDoS)
-    print("\n[1/3] Training Threat T-a (DDoS) Detector...")
+    print("\n[1/6] Training Threat T-a (DDoS) Detector...")
     X_ddos, y_ddos, subnets_ddos = generate_ddos_dataset()
     pkg_ddos, met_ddos = train_and_evaluate_threat(
         threat_name="Volumetric DDoS",
@@ -315,9 +557,16 @@ def main() -> None:
     joblib.dump(pkg_ddos, ddos_path)
     generate_model_card("T_A_DDOS", "Volumetric DDoS", pkg_ddos["feature_names"], met_ddos, MODEL_CARDS_DIR / "t_a_ddos.md")
     print(f"  -> T-a: F1={met_ddos['f1']:.4f} | ROC-AUC={met_ddos['roc_auc']:.4f} | Brier={met_ddos['brier_score']:.4f}")
+    artifacts_meta.append({
+        "filename": ddos_path.name,
+        "threat_class": "T_A_DDOS",
+        "sha256": compute_file_sha256(ddos_path),
+        "model_type": "RandomForestClassifier",
+        "calibrated": True,
+    })
 
     # 2. Train Threat T-e (Port Scan)
-    print("\n[2/3] Training Threat T-e (Port Scan) Detector...")
+    print("\n[2/6] Training Threat T-e (Port Scan) Detector...")
     X_ps, y_ps, subnets_ps = generate_portscan_dataset()
     pkg_ps, met_ps = train_and_evaluate_threat(
         threat_name="Port Scanning & Reconnaissance",
@@ -331,9 +580,16 @@ def main() -> None:
     joblib.dump(pkg_ps, ps_path)
     generate_model_card("T_E_PORT_SCAN", "Port Scanning & Reconnaissance", pkg_ps["feature_names"], met_ps, MODEL_CARDS_DIR / "t_e_portscan.md")
     print(f"  -> T-e: F1={met_ps['f1']:.4f} | ROC-AUC={met_ps['roc_auc']:.4f} | Brier={met_ps['brier_score']:.4f}")
+    artifacts_meta.append({
+        "filename": ps_path.name,
+        "threat_class": "T_E_PORT_SCAN",
+        "sha256": compute_file_sha256(ps_path),
+        "model_type": "RandomForestClassifier",
+        "calibrated": True,
+    })
 
     # 3. Train Threat T-f (Data Exfiltration)
-    print("\n[3/3] Training Threat T-f (Data Exfiltration) Detector...")
+    print("\n[3/6] Training Threat T-f (Data Exfiltration) Detector...")
     X_exfil, y_exfil, subnets_exfil = generate_exfil_dataset()
     pkg_exfil, met_exfil = train_and_evaluate_threat(
         threat_name="Data Exfiltration",
@@ -347,39 +603,126 @@ def main() -> None:
     joblib.dump(pkg_exfil, exfil_path)
     generate_model_card("T_F_EXFIL", "Data Exfiltration", pkg_exfil["feature_names"], met_exfil, MODEL_CARDS_DIR / "t_f_exfil.md")
     print(f"  -> T-f: F1={met_exfil['f1']:.4f} | ROC-AUC={met_exfil['roc_auc']:.4f} | Brier={met_exfil['brier_score']:.4f}")
+    artifacts_meta.append({
+        "filename": exfil_path.name,
+        "threat_class": "T_F_EXFIL",
+        "sha256": compute_file_sha256(exfil_path),
+        "model_type": "RandomForestClassifier",
+        "calibrated": True,
+    })
 
-    # 4. Cryptographic Manifest Creation & Signing
-    print("\n[4/4] Cryptographically signing model artifacts with enclave Ed25519 key...")
-    artifacts_meta = [
-        {
-            "filename": ddos_path.name,
-            "threat_class": "T_A_DDOS",
-            "sha256": compute_file_sha256(ddos_path),
-            "model_type": "RandomForestClassifier",
-            "calibrated": True,
-        },
-        {
-            "filename": ps_path.name,
-            "threat_class": "T_E_PORT_SCAN",
-            "sha256": compute_file_sha256(ps_path),
-            "model_type": "RandomForestClassifier",
-            "calibrated": True,
-        },
-        {
-            "filename": exfil_path.name,
-            "threat_class": "T_F_EXFIL",
-            "sha256": compute_file_sha256(exfil_path),
-            "model_type": "RandomForestClassifier",
-            "calibrated": True,
-        },
-    ]
+    # 4. Train Threat T-b (C2 Beaconing)
+    print("\n[4/6] Training Threat T-b (C2 Beaconing) Detector...")
+    X_beacon, y_beacon, subnets_beacon = generate_beacon_dataset()
+    pkg_beacon, met_beacon = train_and_evaluate_threat(
+        threat_name="Botnet C2 Beaconing",
+        threat_code="T_B_BEACON",
+        X=X_beacon,
+        y=y_beacon,
+        subnets=subnets_beacon,
+        feature_names=["iat_mean", "iat_cv", "iat_autocorr", "iat_std", "sample_count"],
+    )
+    beacon_path = MODELS_DIR / "t_b_beacon.joblib"
+    joblib.dump(pkg_beacon, beacon_path)
+    generate_model_card(
+        "T_B_BEACON", "Botnet C2 Beaconing", pkg_beacon["feature_names"], met_beacon,
+        MODEL_CARDS_DIR / "t_b_beacon.md",
+        phase="2c",
+        data_note=(
+            "Training data: synthetic simulator, fixed seed=45. IAT features drawn from "
+            "parameterized distributions for rigid beacons (CV<0.18), Cobalt Strike-style "
+            "jittered beacons (CV 0.18–0.42), and benign bursty/idle traffic. "
+            "NOT from real captures. Separate CTU-13 binetflow evaluation is a future step "
+            "(see capture_runbook.md). Independent tool evaluation: NOT RUN."
+        ),
+    )
+    print(f"  -> T-b: F1={met_beacon['f1']:.4f} | ROC-AUC={met_beacon['roc_auc']:.4f} | Brier={met_beacon['brier_score']:.4f}")
+    artifacts_meta.append({
+        "filename": beacon_path.name,
+        "threat_class": "T_B_BEACON",
+        "sha256": compute_file_sha256(beacon_path),
+        "model_type": "RandomForestClassifier",
+        "calibrated": True,
+    })
 
-    manifest = create_and_sign_manifest(artifacts=artifacts_meta, private_key=priv_key, version="2.0.0-phase2b")
+    # 5. Train Threat T-c DGA (Domain Generation Algorithms)
+    print("\n[5/6] Training Threat T-c DGA Detector...")
+    X_dga, y_dga, subnets_dga = generate_dga_dataset()
+    pkg_dga, met_dga = train_and_evaluate_threat(
+        threat_name="DGA Domains",
+        threat_code="T_C_DGA",
+        X=X_dga,
+        y=y_dga,
+        subnets=subnets_dga,
+        feature_names=["domain_length", "char_entropy", "trigram_perplexity", "numeric_ratio", "vowel_ratio"],
+    )
+    dga_path = MODELS_DIR / "t_c_dga.joblib"
+    joblib.dump(pkg_dga, dga_path)
+    generate_model_card(
+        "T_C_DGA", "DGA Domains", pkg_dga["feature_names"], met_dga,
+        MODEL_CARDS_DIR / "t_c_dga.md",
+        phase="2c",
+        data_note=(
+            "Training data: synthetic simulator, fixed seed=46. DGA domains are our own "
+            "reimplementation of random-character and hex-alphabet generation algorithms "
+            "(NOT from DGArchive — CC BY-NC-SA; we do not use DGArchive data). Benign "
+            "domains drawn from Tranco-inspired vocabulary. Tri-gram LM trained on "
+            "data/baselines/tranco_top1k.csv (curated 20-row sample). "
+            "Independent DGArchive evaluation: NOT RUN (registration-gated)."
+        ),
+    )
+    print(f"  -> T-c DGA: F1={met_dga['f1']:.4f} | ROC-AUC={met_dga['roc_auc']:.4f} | Brier={met_dga['brier_score']:.4f}")
+    artifacts_meta.append({
+        "filename": dga_path.name,
+        "threat_class": "T_C_DGA",
+        "sha256": compute_file_sha256(dga_path),
+        "model_type": "RandomForestClassifier",
+        "calibrated": True,
+    })
+
+    # 6. Train Threat T-c DNS Tunnel
+    print("\n[6/6] Training Threat T-c DNS Tunnel Detector...")
+    X_tunnel, y_tunnel, subnets_tunnel = generate_dns_tunnel_dataset()
+    pkg_tunnel, met_tunnel = train_and_evaluate_threat(
+        threat_name="DNS Tunnelling",
+        threat_code="T_C_DNS_TUNNEL",
+        X=X_tunnel,
+        y=y_tunnel,
+        subnets=subnets_tunnel,
+        feature_names=["avg_query_length", "max_entropy", "txt_record_ratio", "query_count"],
+    )
+    tunnel_path = MODELS_DIR / "t_c_dns_tunnel.joblib"
+    joblib.dump(pkg_tunnel, tunnel_path)
+    generate_model_card(
+        "T_C_DNS_TUNNEL", "DNS Tunnelling", pkg_tunnel["feature_names"], met_tunnel,
+        MODEL_CARDS_DIR / "t_c_dns_tunnel.md",
+        phase="2c",
+        data_note=(
+            "Training data: synthetic simulator, fixed seed=47. DNS tunnel patterns "
+            "are parameterized approximations of dnscat2, Iodine, and dns2tcp traffic "
+            "statistics from published papers. NOT captured from real tools. "
+            "Independent dns2tcp/dnscat2 capture evaluation: NOT RUN."
+        ),
+    )
+    print(f"  -> T-c Tunnel: F1={met_tunnel['f1']:.4f} | ROC-AUC={met_tunnel['roc_auc']:.4f} | Brier={met_tunnel['brier_score']:.4f}")
+    artifacts_meta.append({
+        "filename": tunnel_path.name,
+        "threat_class": "T_C_DNS_TUNNEL",
+        "sha256": compute_file_sha256(tunnel_path),
+        "model_type": "RandomForestClassifier",
+        "calibrated": True,
+    })
+
+    # 7. Cryptographic Manifest Creation & Signing
+    print("\n[7/7] Cryptographically signing model artifacts with enclave Ed25519 key...")
+    manifest = create_and_sign_manifest(artifacts=artifacts_meta, private_key=priv_key, version="2.0.0-phase2c")
     manifest_path = MODELS_DIR / "models_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"  -> Signed manifest generated -> {manifest_path}")
     print("======================================================================")
-    print("[SUCCESS] All Phase 2b models trained, calibrated, and cryptographically signed.")
+    print("[SUCCESS] All Phase 2b + 2c models trained, calibrated, and cryptographically signed.")
+    print("WARNING: All F1 scores measured on SYNTHETIC data and are expected to be inflated.")
+    print("         Do NOT cite these as performance claims. See model cards for details.")
 
 
 if __name__ == "__main__":
